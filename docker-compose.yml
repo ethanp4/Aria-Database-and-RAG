@@ -1,0 +1,8 @@
+services:
+  django:
+    build: .
+    ports:
+      - 8000:8000
+  
+  # postgresql:
+  #   image: postgres:18

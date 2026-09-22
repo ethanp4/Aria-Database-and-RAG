@@ -19,7 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Optionally load a .env file for local development (python-dotenv).
 try:
     from dotenv import load_dotenv
-    load_dotenv(BASE_DIR.parent / '.env')
+    load_dotenv(BASE_DIR / '.env')
+    # load_dotenv(BASE_DIR.parent / '.env')
 except ImportError:
     pass
 
@@ -33,8 +34,7 @@ SECRET_KEY = 'django-insecure-gp@$7u9in7db5uxiawldiqpm&-b2g6!-=zl5$4^+-3u=)!!=l)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS","127.0.0.1").split(",")
 
 # Application definition
 
@@ -87,8 +87,8 @@ DATABASES = {
         'NAME': os.environ.get('ARIA_DB_NAME', 'aria'),
         'USER': os.environ.get('ARIA_DB_USER', 'aria'),
         'PASSWORD': os.environ.get('ARIA_DB_PASSWORD', ''),
-        'HOST': os.environ.get('ARIA_DB_HOST', 'localhost'),
-        'PORT': os.environ.get('ARIA_DB_PORT', '5432'),
+        'HOST': os.environ.get('ARIA_DB_HOST', ''),
+        'PORT': os.environ.get('ARIA_DB_PORT', ''),
     }
 }
 
