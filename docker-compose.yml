@@ -1,8 +1,11 @@
 services:
   django:
     build: .
+    image: django
     ports:
       - 8000:8000
+    environment:
+      - DB_HOST=host.docker.internal
   
   # postgresql:
   #   image: postgres:18
