@@ -1,4 +1,15 @@
 # Aria
+
+## Project structure
+### Accounts
+Accounts will contain register / login as well as account info / edit account
+### Cart
+Cart will contain the shopping cart as well as the entire checkout process
+### Products
+Products will contain the browse products page and product details
+### Core
+Core will contain pages like the home page and about page
+
 ## Setup
 ### No docker
 1. Create virtual environment 
