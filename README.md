@@ -18,7 +18,7 @@ Core will contain pages like the home page and about page
 ``.\venv\Scripts\activate``
 3. Install requirements
 ``pip install -r requirements.txt``
-4. Run create_db_and_user.sql and schema.sql in your posgresql to make the db. Copy the .env.example to aria_project/aria/.env
+4. Copy the .env.example to aria_project/aria/.env
 ### Docker
 1. Install docker desktop ``https://www.docker.com/products/docker-desktop/``
 
