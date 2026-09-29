@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/cards.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>{% block heading %}{% endblock %}</h1>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% block auth_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "accounts/authbase.html" %}
+
+{% block title %}Register{% endblock %}
+{% block heading %}Create an account{% endblock %}
+
+{% block auth_content %}
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    {{ form.non_field_errors }}
+
+    <label for="{{ form.first_name.id_for_label }}">First name (optional)</label>
+    {{ form.first_name }}
+    {{ form.first_name.errors }}
+
+    <label for="{{ form.last_name.id_for_label }}">Last name (optional)</label>
+    {{ form.last_name }}
+    {{ form.last_name.errors }}
+
+    <label for="{{ form.username.id_for_label }}">Username</label>
+    {{ form.username }}
+    {{ form.username.errors }}
+
+    <label for="{{ form.phone.id_for_label }}">Phone (optional)</label>
+    {{ form.phone }}
+    {{ form.phone.errors }}
+
+    <label for="{{ form.password.id_for_label }}">Password</label>
+    {{ form.password }}
+    {{ form.password.errors }}
+
+    <label for="{{ form.confirm_password.id_for_label }}">Confirm password</label>
+    {{ form.confirm_password }}
+    {{ form.confirm_password.errors }}
+
+    <button type="submit">Create account</button>
+</form>
+
+<p class="switch-link">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+{% endblock %}

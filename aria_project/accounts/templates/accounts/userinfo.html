@@ -1,0 +1,41 @@
+{% extends "accounts/accountbase.html" %}
+
+{% block auth_content %}
+{% if editing %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <label for="{{ form.first_name.id_for_label }}">First name</label>
+        {{ form.first_name }}
+        {{ form.first_name.errors }}
+
+        <br><label for="{{ form.last_name.id_for_label }}">Last name</label>
+        {{ form.last_name }}
+        {{ form.last_name.errors }}
+
+        <br><strong>Username:</strong> {{ customer.username }}
+
+        <br><label for="{{ form.phone.id_for_label }}">Phone</label>
+        {{ form.phone }}
+        {{ form.phone.errors }}
+
+        <br><button type="submit">Save changes</button>
+    </form>
+{% else %}
+    <div class="card-body">
+        <strong>First Name:</strong> {{ customer.first_name }}
+        <br><strong>Last Name:</strong> {{ customer.last_name }}
+        <br><strong>Username:</strong> {{ customer.username }}
+        <br><strong>Phone:</strong> {{ customer.phone }}
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_buttons %}
+    {% if editing %}
+        <a href="{% url 'accounts:account' %}" class="btn btn-secondary">Cancel</a>
+    {% else %}
+        <a href="?edit=1" class="btn btn-secondary">Edit Information</a>
+    {% endif %}
+{% endblock %}
