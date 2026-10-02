@@ -39,7 +39,7 @@ def login_view(request):
             if customer and check_password(password, customer.password_hash):
                 request.session['customer_id'] = customer.customer_id
                 messages.success(request, f'Welcome back, {customer.username}.')
-                return redirect('accounts:myaccount')
+                return redirect('accounts:account')
             else:
                 messages.error(request, 'Invalid username or password.')
     else:

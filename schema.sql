@@ -45,6 +45,13 @@ CREATE TABLE IF NOT EXISTS addresses (
 CREATE INDEX IF NOT EXISTS idx_addresses_customer_id ON addresses (customer_id);
 CREATE INDEX IF NOT EXISTS idx_addresses_customer_type ON addresses (customer_id, address_type);
 
+-- Create categories table for products to reference
+CREATE TABLE IF NOT EXISTS categories (
+    category_id     BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL UNIQUE,
+    description     TEXT
+);
+
 -- =====================================================================
 -- PRODUCTS  (diving/watersports gear)
 -- =====================================================================
@@ -53,7 +60,7 @@ CREATE TABLE IF NOT EXISTS products (
     sku             VARCHAR(50) NOT NULL UNIQUE,
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
-    category        VARCHAR(100),
+    category_id     BIGINT REFERENCES categories(category_id) ON DELETE SET NULL,
     unit_price      NUMERIC(10, 2) NOT NULL CHECK (unit_price >= 0),
     currency        VARCHAR(3) NOT NULL DEFAULT 'CAD' CHECK (currency IN ('CAD', 'USD')),
     stock_quantity  INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
@@ -68,6 +75,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products (sku);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products (name);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products (is_active) WHERE is_active = TRUE;
+
+
 
 -- =====================================================================
 -- INVENTORY MOVEMENTS  (audit trail for stock changes)

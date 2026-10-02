@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'products/css/cards.css' %}">
+{% endblock %}
+
+{% block title %}Browse Products{% endblock %}
+{% block heading %}Browse Products{% endblock %}
+
+{% block content %}
+    {% include "products/product_grid.html" with products=products %}
+{% endblock %}
