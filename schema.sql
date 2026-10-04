@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- High-volume read path: product catalog browsing / lookups
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products (sku);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products (category_id);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products (name);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products (is_active) WHERE is_active = TRUE;
 
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     product_id      BIGINT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
     change_qty      INTEGER NOT NULL,                -- negative = stock out, positive = stock in
     reason          VARCHAR(20) NOT NULL CHECK (reason IN ('SALE', 'RESTOCK', 'REFUND', 'ADJUSTMENT')),
-    reference_order_id BIGINT REFERENCES orders(order_id) ON DELETE SET NULL,  -- FK to orders, linked via ALTER after orders is created
+    reference_order_id BIGINT REFERENCES orders(order_id) ON DELETE SET NULL, 
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
