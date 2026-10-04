@@ -3,11 +3,7 @@
 -- DBAD 4000 Advanced Database - Aria Transactional Analysis & Data Integrity
 -- =====================================================================
 
--- Run this in a database called aria with a user named aria (create_db_and_user.sql)
-
--- =====================================================================
 -- CUSTOMERS
--- =====================================================================
 CREATE TABLE IF NOT EXISTS customers (
     customer_id     BIGSERIAL PRIMARY KEY,
     first_name      VARCHAR(100) NOT NULL,
@@ -24,9 +20,8 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers (email);
 CREATE INDEX IF NOT EXISTS idx_customers_last_name ON customers (last_name);
 
--- =====================================================================
+
 -- ADDRESSES  (customer can have multiple: billing / shipping)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS addresses (
     address_id      BIGSERIAL PRIMARY KEY,
     customer_id     BIGINT NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
@@ -45,6 +40,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 CREATE INDEX IF NOT EXISTS idx_addresses_customer_id ON addresses (customer_id);
 CREATE INDEX IF NOT EXISTS idx_addresses_customer_type ON addresses (customer_id, address_type);
 
+
 -- Create categories table for products to reference
 CREATE TABLE IF NOT EXISTS categories (
     category_id     BIGSERIAL PRIMARY KEY,
@@ -52,9 +48,8 @@ CREATE TABLE IF NOT EXISTS categories (
     description     TEXT
 );
 
--- =====================================================================
+
 -- PRODUCTS  (diving/watersports gear)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS products (
     product_id      BIGSERIAL PRIMARY KEY,
     sku             VARCHAR(50) NOT NULL UNIQUE,
@@ -77,34 +72,15 @@ CREATE INDEX IF NOT EXISTS idx_products_name ON products (name);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products (is_active) WHERE is_active = TRUE;
 
 
-
--- =====================================================================
--- INVENTORY MOVEMENTS  (audit trail for stock changes)
--- =====================================================================
-CREATE TABLE IF NOT EXISTS inventory_movements (
-    movement_id     BIGSERIAL PRIMARY KEY,
-    product_id      BIGINT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
-    change_qty      INTEGER NOT NULL,                -- negative = stock out, positive = stock in
-    reason          VARCHAR(20) NOT NULL CHECK (reason IN ('SALE', 'RESTOCK', 'REFUND', 'ADJUSTMENT')),
-    reference_order_id BIGINT,                       -- nullable FK to orders, linked via ALTER after orders is created
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_movements_product_id ON inventory_movements (product_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_movements_created_at ON inventory_movements (created_at);
-
--- =====================================================================
 -- CARRIERS
--- =====================================================================
 CREATE TABLE IF NOT EXISTS carriers (
     carrier_id      BIGSERIAL PRIMARY KEY,
     name            VARCHAR(100) NOT NULL UNIQUE,
     tracking_url_template VARCHAR(255)                -- e.g. https://carrier.com/track/{tracking_number}
 );
 
--- =====================================================================
+
 -- ORDERS  (single flat table, one order = one shipment)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS orders (
     order_id        BIGSERIAL PRIMARY KEY,
     customer_id     BIGINT NOT NULL REFERENCES customers(customer_id) ON DELETE RESTRICT,
@@ -132,22 +108,22 @@ CREATE INDEX IF NOT EXISTS idx_orders_tracking_number ON orders (tracking_number
 -- Composite index for the very common "this customer's orders, newest first"
 CREATE INDEX IF NOT EXISTS idx_orders_customer_date ON orders (customer_id, order_date DESC);
 
--- Now that orders exists, link inventory_movements to it (idempotent:
--- only add the constraint if it doesn't already exist).
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'fk_inventory_movements_order'
-    ) THEN
-        ALTER TABLE inventory_movements
-            ADD CONSTRAINT fk_inventory_movements_order
-            FOREIGN KEY (reference_order_id) REFERENCES orders(order_id) ON DELETE SET NULL;
-    END IF;
-END $$;
 
--- =====================================================================
+-- INVENTORY MOVEMENTS  (audit trail for stock changes)
+CREATE TABLE IF NOT EXISTS inventory_movements (
+    movement_id     BIGSERIAL PRIMARY KEY,
+    product_id      BIGINT NOT NULL REFERENCES products(product_id) ON DELETE RESTRICT,
+    change_qty      INTEGER NOT NULL,                -- negative = stock out, positive = stock in
+    reason          VARCHAR(20) NOT NULL CHECK (reason IN ('SALE', 'RESTOCK', 'REFUND', 'ADJUSTMENT')),
+    reference_order_id BIGINT REFERENCES orders(order_id) ON DELETE SET NULL,  -- FK to orders, linked via ALTER after orders is created
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_product_id ON inventory_movements (product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_created_at ON inventory_movements (created_at);
+
+
 -- ORDER_ITEMS  (line items)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS order_items (
     order_item_id   BIGSERIAL PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
@@ -161,9 +137,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items (order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items (product_id);
 
--- =====================================================================
+
 -- PAYMENTS
--- =====================================================================
 CREATE TABLE IF NOT EXISTS payments (
     payment_id      BIGSERIAL PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(order_id) ON DELETE RESTRICT,
@@ -181,9 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments (order_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status);
 CREATE INDEX IF NOT EXISTS idx_payments_processed_at ON payments (processed_at);
 
--- =====================================================================
+
 -- REFUNDS
--- =====================================================================
 CREATE TABLE IF NOT EXISTS refunds (
     refund_id       BIGSERIAL PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(order_id) ON DELETE RESTRICT,
@@ -202,9 +176,8 @@ CREATE INDEX IF NOT EXISTS idx_refunds_order_id ON refunds (order_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_payment_id ON refunds (payment_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_status ON refunds (status);
 
--- =====================================================================
+
 -- ACCOUNTS RECEIVABLE  (simple status tracking: money owed TO Aria)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS accounts_receivable (
     ar_id           BIGSERIAL PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(order_id) ON DELETE RESTRICT,
@@ -220,9 +193,8 @@ CREATE INDEX IF NOT EXISTS idx_ar_order_id ON accounts_receivable (order_id);
 CREATE INDEX IF NOT EXISTS idx_ar_status ON accounts_receivable (status);
 CREATE INDEX IF NOT EXISTS idx_ar_due_date ON accounts_receivable (due_date);
 
--- =====================================================================
+
 -- ACCOUNTS PAYABLE  (simple status tracking: money Aria owes suppliers/carriers)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS accounts_payable (
     ap_id           BIGSERIAL PRIMARY KEY,
     carrier_id      BIGINT REFERENCES carriers(carrier_id) ON DELETE SET NULL,
@@ -238,10 +210,9 @@ CREATE TABLE IF NOT EXISTS accounts_payable (
 CREATE INDEX IF NOT EXISTS idx_ap_status ON accounts_payable (status);
 CREATE INDEX IF NOT EXISTS idx_ap_due_date ON accounts_payable (due_date);
 
--- =====================================================================
+
 -- POLICY DOCUMENTS  (metadata for the 20 docs backing the RAG chatbot;
 -- actual document content/embeddings live in a vector store, not here)
--- =====================================================================
 CREATE TABLE IF NOT EXISTS policy_documents (
     document_id     BIGSERIAL PRIMARY KEY,
     title           VARCHAR(255) NOT NULL,
