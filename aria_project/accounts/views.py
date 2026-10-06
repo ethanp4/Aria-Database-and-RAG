@@ -3,7 +3,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import LoginForm, ProfileEditForm, RegisterForm
-from .models import Account
+from .models import Account, Profile
 
 def register_view(request):
     if request.method == 'POST':
@@ -50,24 +50,30 @@ def login_view(request):
 
     return render(request, 'accounts/auth.html', {'form': form, 'page_title': 'Log in'})
 
-def update_profile(request):
-    account_id = request.session.get('account_id')
-    if not account_id:
-        messages.error(request, 'You must be logged in to update your profile.')
-        return redirect('accounts:login')
+def update_profile(request, account_id=None):
+    if account_id is None:
+        account_id = request.session.get('account_id')
+        if not account_id:
+            messages.error(request, 'You must be logged in to update your profile.')
+            return redirect('accounts:login')
 
-    account = get_object_or_404(Account, account_id=account_id)
+    try:
+        profile = Profile.objects.get(account_id=account_id)
+        messages.info(request, 'Updating existing profile')
+    except Profile.DoesNotExist:
+        profile = Profile.objects.create(account_id=account_id)
+        messages.info(request, 'Creating new profile')
 
     if request.method == 'POST':
-        form = ProfileEditForm(request.POST, instance=account.profile)
+        form = ProfileEditForm(request.POST, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated.')
-            return redirect('accounts:account')
+            return redirect('products:dashboard')
     else:
-        form = ProfileEditForm(instance=account.profile)
+        form = ProfileEditForm(instance=profile)
 
-    return render(request, 'accounts/update_profile.html', {'form': form})
+    return render(request, 'accounts/auth.html', {'form': form, 'page_title': "Create profile"})
 
 
 def logout_view(request):

@@ -1,6 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Update Profile{% endblock %}
-{% block heading %}Update your profile{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block heading %}{{ page_title }}{% endblock %}
 
 {% block content %}
+<main class="container py-5">
+    <div class="row justify-content-center">
+        <!-- <div class="col-12 col-lg-6 col-xl-5"> -->
+            <section class="card border-0 shadow-sm" aria-labelledby="login-form-heading">
+                <div class="card-body p-4 p-md-5">
+                    <h1 id="login-form-heading" class="h2 mb-4">{{ page_title }}</h1>
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="text-danger small mt-1">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+
+                        <button type="submit" class="btn btn-primary w-100">{{ page_title }}</button>
+                    </form>
+                </div>
+            </section>
+        <!-- </div> -->
+    </div>
+</main>
+{% endblock %}

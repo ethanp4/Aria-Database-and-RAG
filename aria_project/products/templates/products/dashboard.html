@@ -41,7 +41,7 @@
         </div>
     </section>
 
-    <section aria-labelledby="products-heading">
+    <section aria-labelledby="products-heading" class="py-2">
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
             <div class="d-flex align-items-center gap-3">
                 <h2 id="products-heading" class="h4 mb-0">Products</h2>
@@ -97,7 +97,7 @@
         {% endif %}
     </section>
 
-    <section aria-labelledby="categories" class="py-4">
+    <section aria-labelledby="categories" class="py-2">
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
             <div class="d-flex align-items-center gap-3">
                 <h2 id="categories" class="h4 mb-0">Categories</h2>
@@ -141,7 +141,7 @@
         {% endif %}
     </section>
 
-    <section aria-labelledby="inventory-movements">
+    <section aria-labelledby="inventory-movements" class="py-2">
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
             <div class="d-flex align-items-center gap-3">
                 <h2 id="inventory-movements" class="h4 mb-0">Inventory Movements</h2>
@@ -177,6 +177,59 @@
             <div class="card-body py-4 text-center">
                 <h3 class="h5">No inventory movements yet</h3>
                 <p class="text-body-secondary">Inventory movements will appear here as they are logged.</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="profiles" class="py-2">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <h2 id="profiles" class="h4 mb-0">Profiles</h2>
+            </div>
+            <span class="text-body-secondary small">{{ profile_count }} total</span>
+        </div>
+        {% if profiles %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <caption class="visually-hidden">Profiles with user, email, and edit actions</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Username</th>
+                        <th scope="col">First Name</th>
+                        <th scope="col">Last Name</th>
+                        <th scope="col">Phone Number</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Address count</th>
+                        <th scope="col">Created at</th>
+                        <th scope="col">Updated at</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for profile in profiles %}
+                    <tr>
+                        <td>{{ profile.account.username }}</td>
+                        <td>{{ profile.first_name }}</td>
+                        <td>{{ profile.last_name }}</td>
+                        <td>{{ profile.phone }}</td>
+                        <td>{{ profile.email }}</td>
+                        <td>placeholder</td>
+                        <td>{{ profile.created_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ profile.updated_at|date:"Y-m-d H:i:s" }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:update_profile' %}?account_id={{ profile.account_id }}" aria-label="Edit {{ profile.account.username }}">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card border-0 bg-body-tertiary">
+            <div class="card-body py-4 text-center">
+                <h3 class="h5">No profiles yet</h3>
+                <p class="text-body-secondary">All user profiles will be displayed here.</p>
             </div>
         </div>
         {% endif %}

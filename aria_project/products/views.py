@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.db import transaction
 
-from accounts.models import Account
+from accounts.models import Account, Profile
 from .forms import CategoryForm, ProductForm
 from .models import Category, InventoryMovement, Product
 
@@ -14,7 +14,6 @@ def dashboard_view(request):
         'account_count': Account.objects.count(),
         'product_count': Product.objects.count(),
 
-        
         'products': Product.objects.all(),
 
         'inventory_movements': InventoryMovement.objects.select_related('product').order_by('-created_at')[:10],
@@ -22,6 +21,9 @@ def dashboard_view(request):
 
         'categories': Category.objects.annotate(product_count=Count('product')).order_by('name'),
         'category_count': Category.objects.count(),
+
+        'profiles': Profile.objects.filter().select_related('account').order_by('first_name', 'last_name')[:10],
+        'profile_count': Profile.objects.filter().count(),
     }
     return render(request, 'products/dashboard.html', context)
 

@@ -10,6 +10,15 @@
             <section class="card border-0 shadow-sm" aria-labelledby="login-form-heading">
                 <div class="card-body p-4 p-md-5">
                     <h1 id="login-form-heading" class="h2 mb-4">{{ page_title }}</h1>
+                    
+                    {% if messages %}
+                    <div class="mb-4" aria-live="polite">
+                        {% for message in messages %}
+                        <div class="alert alert-success mb-2" role="status">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+    
                     <form method="post">
                         {% csrf_token %}
                         {% if form.non_field_errors %}
@@ -35,5 +44,5 @@
             </section>
         </div>
     </div>
-
+</main>
 {% endblock %}
