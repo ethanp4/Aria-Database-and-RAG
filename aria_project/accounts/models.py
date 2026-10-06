@@ -6,9 +6,14 @@ class Account(models.Model):
     username = models.CharField(max_length=100, unique=True)
     password_hash = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+    account_type = models.CharField(max_length=50, default='user')
 
     class Meta:
         db_table = 'accounts'
+        constraints = [
+            models.UniqueConstraint(fields=['username'], name='unique_username'),
+            models.CheckConstraint(condition=models.Q(account_type__in=['user', 'admin']), name='valid_account_type'),
+        ]
 
     def __str__(self):
         return self.username

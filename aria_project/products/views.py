@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.db.models.aggregates import Count
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.db import transaction
@@ -10,6 +11,15 @@ from .models import Category, InventoryMovement, Product
 
 
 def dashboard_view(request):
+    account_id = request.session.get('account_id')
+    if not account_id:
+        messages.error(request, 'You are not logged in.')
+        return redirect('accounts:login')
+    account_type = Account.objects.get(account_id=account_id).account_type
+    if account_type != 'admin':
+        messages.error(request, 'You do not have permission to access the dashboard.')
+        return redirect('products:browse')
+    
     context = {
         'account_count': Account.objects.count(),
         'product_count': Product.objects.count(),

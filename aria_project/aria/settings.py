@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 import environ
+from django.contrib.messages import constants as message_constants
 
 #get variables from .env file, must be placed in the same directory as this file
 env = environ.Env()
@@ -47,6 +48,15 @@ INSTALLED_APPS = [
     'core',
     'products'
 ]
+
+#translate message tag names to bootstrap classes
+MESSAGE_TAGS = {
+    message_constants.DEBUG: 'debug',
+    message_constants.INFO: 'info',
+    message_constants.SUCCESS: 'success',
+    message_constants.WARNING: 'warning',
+    message_constants.ERROR: 'danger',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
