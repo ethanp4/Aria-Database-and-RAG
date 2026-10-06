@@ -3,28 +3,34 @@
 -- DBAD 4000 Advanced Database - Aria Transactional Analysis & Data Integrity
 -- =====================================================================
 
+CREATE TABLE IF NOT EXISTS accounts(
+    account_id      BIGSERIAL PRIMARY KEY,
+    username        VARCHAR(100) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- CUSTOMERS
-CREATE TABLE IF NOT EXISTS customers (
-    customer_id     BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS profiles (
+    profile_id     BIGSERIAL PRIMARY KEY,
+    account_id      BIGINT NOT NULL REFERENCES accounts(account_id) ON DELETE CASCADE,
     first_name      VARCHAR(100) NOT NULL,
     last_name       VARCHAR(100) NOT NULL,
     email           VARCHAR(255) NOT NULL UNIQUE,
     phone           VARCHAR(20),
-    password_hash   VARCHAR(255) NOT NULL,          -- registered accounts only
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Frequent lookups: login by email, staff search by name
-CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email ON customers (email);
-CREATE INDEX IF NOT EXISTS idx_customers_last_name ON customers (last_name);
-
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_email ON profiles (email);
+CREATE INDEX IF NOT EXISTS idx_profiles_last_name ON profiles (last_name);
 
 -- ADDRESSES  (customer can have multiple: billing / shipping)
 CREATE TABLE IF NOT EXISTS addresses (
     address_id      BIGSERIAL PRIMARY KEY,
-    customer_id     BIGINT NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    profile_id      BIGINT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
     address_type    VARCHAR(10) NOT NULL CHECK (address_type IN ('SHIPPING', 'BILLING')),
     line1           VARCHAR(255) NOT NULL,
     line2           VARCHAR(255),
