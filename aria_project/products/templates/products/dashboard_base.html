@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/custom.css' %}">
+{% endblock %}
+
+{% block site_header %}
+<header class="border-bottom bg-body">
+    <nav class="container navbar navbar-expand-sm py-3" aria-label="Dashboard navigation">
+        <a class="navbar-brand fw-semibold" href="{% url 'products:dashboard' %}">Store dashboard</a>
+        <div class="navbar-nav ms-sm-auto">
+            <a class="nav-link" href="{% url 'products:dashboard' %}">Dashboard</a>
+            <a class="nav-link" href="{% url 'products:browse' %}">View store</a>
+        </div>
+    </nav>
+</header>
+{% endblock %}
+
+{% block content %}
+{% block dashboard_content %}{% endblock %}
+{% endblock %}

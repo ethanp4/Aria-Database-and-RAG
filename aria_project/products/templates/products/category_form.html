@@ -1,0 +1,48 @@
+{% extends "products/dashboard_base.html" %}
+
+{% block title %}New category{% endblock %}
+
+{% block dashboard_content %}
+<main class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-7">
+            <div class="mb-4">
+                <a href="{{ request.GET.next|default:'/dashboard/' }}" class="link-secondary">← Go Back</a>
+            </div>
+            <section class="card border-0 shadow-sm" aria-labelledby="category-form-heading">
+                <div class="card-body p-4 p-md-5">
+                    <h1 id="category-form-heading" class="h2 mb-2">New category</h1>
+                    <p class="text-body-secondary mb-4">Create a category, then continue adding or editing your product.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if product %}
+                        <input type="hidden" name="return_product_id" value="{{ product.product_id }}">
+                        {% endif %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                            <button class="btn btn-primary" type="submit">Create category</button>
+                            <a class="btn btn-outline-secondary" href="{{ request.GET.next|default:'/dashboard/' }}">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+{% endblock %}

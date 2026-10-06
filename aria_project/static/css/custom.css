@@ -1,0 +1,7 @@
+:root {
+  --bs-primary: #0a6e8a;
+  --bs-primary-rgb: 10, 110, 138;
+  --bs-body-font-family: 'Inter', sans-serif;
+  --bs-border-radius: 0.75rem;
+}
+.btn-primary { --bs-btn-bg: #0a6e8a; --bs-btn-border-color: #0a6e8a; }

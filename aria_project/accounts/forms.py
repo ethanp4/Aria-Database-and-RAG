@@ -1,19 +1,33 @@
 from django import forms
 
-from .models import Customer
+from .models import Account, Profile
 
 
 class RegisterForm(forms.Form):
-    first_name = forms.CharField(max_length=100, required=False)
-    last_name = forms.CharField(max_length=100, required=False)
-    username = forms.CharField(max_length=100)
-    phone = forms.CharField(max_length=20, required=False)
-    password = forms.CharField(widget=forms.PasswordInput, min_length=4)
-    confirm_password = forms.CharField(widget=forms.PasswordInput)
+    username = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'username',
+        }),
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+        }),
+        min_length=4,
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+        }),
+    )
 
     def clean_username(self):
         username = self.cleaned_data['username'].lower()
-        if Customer.objects.filter(username=username).exists():
+        if Account.objects.filter(username=username).exists():
             raise forms.ValidationError('An account with this username already exists.')
         return username
 
@@ -27,10 +41,21 @@ class RegisterForm(forms.Form):
 
 
 class LoginForm(forms.Form):
-    username = forms.CharField(max_length=100)
-    password = forms.CharField(widget=forms.PasswordInput)
+    username = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'username',
+        }),
+    )
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'current-password',
+        }),
+    )
 
-class CustomerEditForm(forms.ModelForm):
+class ProfileEditForm(forms.ModelForm):
     class Meta:
-        model = Customer
-        fields = ['first_name', 'last_name', 'phone']
+        model = Profile
+        fields = ['first_name', 'last_name', 'phone', 'email']

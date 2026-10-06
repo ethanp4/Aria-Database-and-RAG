@@ -37,3 +37,33 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class InventoryMovement(models.Model):
+    class Reason(models.TextChoices):
+        SALE = 'SALE', 'Sale'
+        RESTOCK = 'RESTOCK', 'Restock'
+        REFUND = 'REFUND', 'Refund'
+        ADJUSTMENT = 'ADJUSTMENT', 'Adjustment'
+
+    movement_id = models.BigAutoField(primary_key=True)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.RESTRICT,
+        related_name='inventory_movements',
+    )
+    change_qty = models.IntegerField()
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_movements'
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(reason__in=['SALE', 'RESTOCK', 'REFUND', 'ADJUSTMENT']),
+                name='inv_mov_reason_valid',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.product}: {self.change_qty:+} ({self.get_reason_display()})'

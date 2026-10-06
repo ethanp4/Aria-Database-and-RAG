@@ -2,13 +2,18 @@
 {% load static %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
-<link rel="stylesheet" href="{% static 'css/components/cards.css' %}">
+
 {% endblock %}
+
+{% block title %}My Account{% endblock %}
+{% block heading %} Hello, {{ customer.username }}! {% endblock %}
 
 {% block content %}
 <div class="card">
-    <h1>{% block heading %}{% endblock %}</h1>
+    <div class="card-header">
+        <h2>Account Details</h2>
+    </div>
+
     {% if messages %}
     <ul class="messages">
         {% for message in messages %}
@@ -17,5 +22,10 @@
     </ul>
     {% endif %}
     {% block auth_content %}{% endblock %}
+
+    <div class="card-footer">
+        <a href="{% url 'accounts:logout' %}" class="btn btn-danger">Log Out</a>
+        {% block extra_buttons %}{% endblock %}
+    </div>
 </div>
 {% endblock %}

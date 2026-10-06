@@ -1,17 +1,187 @@
-{% extends "base.html" %}
-{% load static %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components/cards.css' %}">
-<link rel="stylesheet" href="{% static 'css/components/forms.css' %}">
-{% endblock %}
+{% extends "products/dashboard_base.html" %}
 
 {% block title %}Admin Dashboard{% endblock %}
-{% block heading %} Admin Dashboard {% endblock %}
 
-{% block content %}
+{% block dashboard_content %}
+<main class="container py-5">
+    <header class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+            <h1 class="h2 mb-1">Dashboard</h1>
+            <p class="text-body-secondary mb-0">A quick overview of your store.</p>
+        </div>
+    </header>
 
+    {% if messages %}
+    <div class="mb-4" aria-live="polite">
+        {% for message in messages %}
+        <div class="alert alert-success mb-2" role="status">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
+    <section class="mb-5" aria-labelledby="overview-heading">
+        <h2 id="overview-heading" class="h4 mb-3">Overview</h2>
+        <div class="row g-3">
+            <div class="col-12 col-sm-6 col-lg-4">
+                <article class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <h3 class="h6 text-body-secondary">Accounts</h3>
+                        <p class="display-6 fw-semibold mb-0">{{ account_count }}</p>
+                    </div>
+                </article>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-4">
+                <article class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <h3 class="h6 text-body-secondary">Products</h3>
+                        <p class="display-6 fw-semibold mb-0">{{ product_count }}</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
 
+    <section aria-labelledby="products-heading">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <h2 id="products-heading" class="h4 mb-0">Products</h2>
+                <a class="mt-2" href="{% url 'products:product_create' %}">Add product</a>
+            </div>
+            <span class="text-body-secondary small">{{ product_count }} total</span>
+        </div>
+        {% if products %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <caption class="visually-hidden">Products with price, stock, status, and edit actions</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Price</th>
+                        <th scope="col">Stock</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <th scope="row">{{ product.name }}</th>
+                        <td>{{ product.sku }}</td>
+                        <td>{{ product.currency }} {{ product.unit_price }}</td>
+                        <td>{{ product.stock_quantity }}</td>
+                        <td>{{ product.category }}</td>
+                        <td>
+                            {% if product.is_active %}
+                            <span class="badge text-bg-success">Active</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'products:product_edit' product.product_id %}" aria-label="Edit {{ product.name }}">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card border-0 bg-body-tertiary">
+            <div class="card-body py-4 text-center">
+                <h3 class="h5">No products yet</h3>
+                <p class="text-body-secondary">Add a product and it will display here.</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="categories" class="py-4">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <h2 id="categories" class="h4 mb-0">Categories</h2>
+                <a class="mt-2" href="{% url 'products:category_create' %}">Add category</a>
+            </div>
+            <span class="text-body-secondary small">{{ category_count }} total</span>
+        </div>
+        {% if categories %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <caption class="visually-hidden">Categories with name, description, and edit actions</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Category</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Product Count</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <th scope="row">{{ category.name }}</th>
+                        <td>{{ category.description }}</td>
+                        <td>{{ category.product_count }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{% url 'products:category_edit' category.category_id %}" aria-label="Edit {{ category.name }}">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card border-0 bg-body-tertiary">
+            <div class="card-body py-4 text-center">
+                <h3 class="h5">No categories yet</h3>
+                <p class="text-body-secondary">All categories will be displayed here.</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="inventory-movements">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <h2 id="inventory-movements" class="h4 mb-0">Inventory Movements</h2>
+            </div>
+            <span class="text-body-secondary small">{{ inventory_movement_count }} total</span>
+        </div>
+        {% if inventory_movements %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <caption class="visually-hidden">Inventory movements with product, quantity, reason, and timestamp</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in inventory_movements %}
+                    <tr>
+                        <td>{{ movement.product.name }}</td>
+                        <td>{{ movement.change_qty }}</td>
+                        <td>{{ movement.reason }}</td>
+                        <td>{{ movement.created_at|date:"Y-m-d H:i:s" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card border-0 bg-body-tertiary">
+            <div class="card-body py-4 text-center">
+                <h3 class="h5">No inventory movements yet</h3>
+                <p class="text-body-secondary">Inventory movements will appear here as they are logged.</p>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
+</main>
 {% endblock %}
    

@@ -70,6 +70,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
+                #automatically load the profile info on all pages
+                "accounts.context_preprocessors.current_profile",
+                "accounts.context_preprocessors.account_info",
             ],
         },
     },
