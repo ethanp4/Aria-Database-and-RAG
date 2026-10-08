@@ -1,4 +1,6 @@
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -6,7 +8,7 @@ from django.urls import reverse
 from django.db import transaction
 
 from accounts.models import Account, Profile
-from .forms import CategoryForm, ProductForm
+from .forms import BrowseFiltersForm, CategoryForm, ProductForm
 from .models import Category, InventoryMovement, Product
 
 
@@ -39,8 +41,53 @@ def dashboard_view(request):
 
 
 def browse_view(request):
-    products = Product.objects.filter(is_active=True)
-    return render(request, 'products/browse.html', {'products': products})
+    filter_data = request.GET.copy()
+    if not filter_data.get('per_page'):
+        filter_data['per_page'] = '20'
+    form = BrowseFiltersForm(filter_data)
+    products = Product.objects.filter(is_active=True).select_related('category')
+    per_page = 20
+    if form.is_valid():
+        filters = form.cleaned_data
+        query = filters['q'].strip()
+        if query:
+            products = products.filter(
+                Q(name__icontains=query)
+                | Q(description__icontains=query)
+                | Q(sku__icontains=query)
+            )
+        if filters['category']:
+            products = products.filter(category=filters['category'])
+        if filters['min_price'] is not None:
+            products = products.filter(unit_price__gte=filters['min_price'])
+        if filters['max_price'] is not None:
+            products = products.filter(unit_price__lte=filters['max_price'])
+        if filters['in_stock']:
+            products = products.filter(stock_quantity__gt=0)
+
+        per_page = int(filters['per_page'] or 20)
+        sort = filters['sort'] or 'name'
+        if sort == 'price_low':
+            products = products.order_by('unit_price', 'name')
+        elif sort == 'price_high':
+            products = products.order_by('-unit_price', 'name')
+        else:
+            products = products.order_by('name')
+    else:
+        products = products.order_by('name')
+
+    result_count = products.count()
+    paginator = Paginator(products, per_page)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    return render(request, 'products/browse.html', {
+        'products': page_obj.object_list,
+        'filter_form': form,
+        'result_count': result_count,
+        'page_obj': page_obj,
+        'query_string': query_params.urlencode(),
+    })
 
 
 def product_create_view(request):
