@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Count
+from django.core.validators import MinValueValidator
 
 from .models import Category, InventoryMovement, Product
 
@@ -21,6 +22,88 @@ class CategoryForm(forms.ModelForm):
                 'rows': 4,
             }),
         }
+
+
+class BrowseFiltersForm(forms.Form):
+    PAGE_SIZE_CHOICES = (
+        ('20', '20 per page'),
+        ('50', '50 per page'),
+        ('100', '100 per page'),
+    )
+    SORT_CHOICES = (
+        ('name', 'Name'),
+        ('price_low', 'Price: low to high'),
+        ('price_high', 'Price: high to low'),
+    )
+
+    q = forms.CharField(
+        required=False,
+        label='Search products',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search products...',
+            'aria-label': 'Search products',
+        }),
+    )
+    category = CategoryChoiceField(
+        queryset=Category.objects.none(),
+        required=False,
+        label='Category',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    min_price = forms.DecimalField(
+        required=False,
+        label='Minimum price',
+        validators=[MinValueValidator(0)],
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '0',
+            'step': '0.01',
+        }),
+    )
+    max_price = forms.DecimalField(
+        required=False,
+        label='Maximum price',
+        validators=[MinValueValidator(0)],
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '0',
+            'step': '0.01',
+        }),
+    )
+    in_stock = forms.BooleanField(
+        required=False,
+        label='In stock only',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+    sort = forms.ChoiceField(
+        required=False,
+        label='Sort by',
+        choices=SORT_CHOICES,
+        initial='name',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    per_page = forms.ChoiceField(
+        required=False,
+        label='Results per page',
+        choices=PAGE_SIZE_CHOICES,
+        initial='20',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['category'].queryset = Category.objects.annotate(
+            product_count=Count('product'),
+        ).order_by('name')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        min_price = cleaned_data.get('min_price')
+        max_price = cleaned_data.get('max_price')
+        if min_price is not None and max_price is not None and min_price > max_price:
+            self.add_error('max_price', 'Maximum price must be at least the minimum price.')
+        return cleaned_data
 
 
 class ProductForm(forms.ModelForm):
