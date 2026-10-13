@@ -26,6 +26,7 @@ class CategoryForm(forms.ModelForm):
 
 class BrowseFiltersForm(forms.Form):
     PAGE_SIZE_CHOICES = (
+        ('10', '10 per page'),
         ('20', '20 per page'),
         ('50', '50 per page'),
         ('100', '100 per page'),
