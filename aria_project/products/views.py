@@ -1,3 +1,5 @@
+import math
+
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -81,11 +83,20 @@ def browse_view(request):
     page_obj = paginator.get_page(request.GET.get('page'))
     query_params = request.GET.copy()
     query_params.pop('page', None)
+
+    num_pages = paginator.num_pages
+    if num_pages <= 10:
+        page_range = paginator.page_range
+    else:
+        start_page = max(1, min(page_obj.number - 5, num_pages - 9))
+        page_range = range(start_page, start_page + 10)
+
     return render(request, 'products/browse.html', {
         'products': page_obj.object_list,
         'filter_form': form,
         'result_count': result_count,
         'page_obj': page_obj,
+        'page_range': page_range,
         'query_string': query_params.urlencode(),
     })
 
