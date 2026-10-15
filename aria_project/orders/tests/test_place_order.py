@@ -1,11 +1,13 @@
 import uuid
 from decimal import Decimal
+from unittest import mock
 
+from django.db import DatabaseError
 from django.test import TestCase
 
 from accounts.models import Account, Address
 from cart.cart import CartLine
-from orders.models import Order, OrderItem
+from orders.models import Order
 from orders.pricing import quote
 from orders.services import (
     AddressData, Contact, InvalidCheckout, OutOfStock, PaymentDeclined, PaymentFailed, place_order,
@@ -27,6 +29,18 @@ def make_product(sku='MASK-1', price='40.00', stock=5, active=True):
 
 def line(product, qty):
     return CartLine(product, qty, product.unit_price * qty)
+
+
+class CaptureRaisesGateway(FakeGateway):
+    def capture(self, ref):
+        self._record('capture', ref)
+        raise RuntimeError('connection reset')
+
+
+class VoidRaisesGateway(FakeGateway):
+    def void(self, ref):
+        self._record('void', ref)
+        raise RuntimeError('connection reset')
 
 
 class PlaceOrderTests(TestCase):
@@ -213,6 +227,59 @@ class PlaceOrderTests(TestCase):
         actions = [c[0] for c in self.gw.calls]
         self.assertEqual(actions.count('authorize'), 1)
         self.assertEqual(actions.count('capture'), 1)
+
+    def test_replay_after_success_with_cleared_cart_returns_same_order(self):
+        token = uuid.uuid4()
+        first = self.place(self.alice, checkout_token=token)
+        calls = list(self.gw.calls)
+        Product.objects.filter(pk=self.mask.pk).update(unit_price=Decimal('99.00'))
+        bad = AddressData(line1='1 Lake Rd', line2=None, city='Toronto', region='Ontaro',
+                          postal_code='M5V 1A1', country='CA')
+        again = self.place(self.alice, lines=[], shipping=bad, checkout_token=token)
+        self.assertEqual(again.pk, first.pk)
+        self.assertFalse(again.was_created)
+        self.assertEqual(again.status, Order.Status.CONFIRMED)
+        self.assertEqual(self.gw.calls, calls)
+        with self.assertRaises(Order.DoesNotExist):
+            self.place(self.bob, lines=[], checkout_token=token)
+
+    def assert_abandoned_after_authorize(self, token):
+        order = Order.objects.get(checkout_token=token)
+        self.assertEqual(order.status, Order.Status.PAYMENT_FAILED)
+        self.assertIsNone(order.confirmed_payment)
+        self.assertIsNone(order.confirmed_at)
+        payment = order.payments.get()
+        self.assertEqual(payment.status, Payment.Status.FAILED)
+        self.assertIn(('void', payment.gateway_ref), self.gw.calls)
+        self.assertEqual(self.stock(self.mask), 5)
+        self.assertEqual(self.stock(self.fins), 3)
+        self.assertFalse(self.sales().exists())
+
+    def test_db_error_before_capture_voids_and_marks_payment_failed(self):
+        token = uuid.uuid4()
+        with mock.patch.object(InventoryMovement.objects, 'bulk_create',
+                               side_effect=DatabaseError('disk full')):
+            with self.assertRaises(DatabaseError):
+                self.place(self.alice, checkout_token=token)
+        self.assert_abandoned_after_authorize(token)
+        self.assertNotIn('capture', [c[0] for c in self.gw.calls])
+
+    def test_capture_raising_unexpected_error_voids_and_marks_payment_failed(self):
+        self.gw = CaptureRaisesGateway()
+        token = uuid.uuid4()
+        with self.assertRaises(RuntimeError):
+            self.place(self.alice, checkout_token=token)
+        self.assert_abandoned_after_authorize(token)
+        self.assertEqual([c[0] for c in self.gw.calls], ['authorize', 'capture', 'void'])
+
+    def test_failing_void_still_records_outcome(self):
+        self.gw = VoidRaisesGateway()
+        token = uuid.uuid4()
+        with self.assertRaises(OutOfStock):
+            self.place(self.alice, lines=[line(self.fins, 4)], checkout_token=token)
+        order = Order.objects.get(checkout_token=token)
+        self.assertEqual(order.status, Order.Status.OUT_OF_STOCK)
+        self.assertEqual(order.payments.get().status, Payment.Status.VOIDED)
 
     def test_same_token_after_failure_does_not_retry_payment(self):
         token = uuid.uuid4()
