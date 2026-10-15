@@ -21,6 +21,7 @@
             {% if username %}
                 <div class="navbar-nav ms-sm-3">
                     {% comment %} <a class="nav-link" href="{% url 'accounts:account' %}">My Account</a> {% endcomment %}
+                    <a class="nav-link" href="{% url 'accounts:address_list' %}">Addresses</a>
                     <a class="nav-link" href="{% url 'accounts:logout' %}">Log Out</a>
                 </div>
             {% else %}

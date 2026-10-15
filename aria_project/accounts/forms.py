@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Account, Profile
+from .models import Account, Address, Profile
 
 
 class RegisterForm(forms.Form):
@@ -59,3 +59,18 @@ class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = Profile
         fields = ['first_name', 'last_name', 'phone', 'email']
+
+class AddressForm(forms.ModelForm):
+    class Meta:
+        model = Address
+        fields = ['address_type', 'line1', 'line2', 'city', 'region', 'postal_code', 'country', 'is_default']
+        widgets = {
+            'address_type': forms.Select(attrs={'class': 'form-select'}),
+            'line1': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'address-line1'}),
+            'line2': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'address-line2'}),
+            'city': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'address-level2'}),
+            'region': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'address-level1'}),
+            'postal_code': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'postal-code'}),
+            'country': forms.Select(attrs={'class': 'form-select'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }

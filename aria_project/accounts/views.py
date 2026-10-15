@@ -1,9 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-from .forms import LoginForm, ProfileEditForm, RegisterForm
-from .models import Account, Profile
+from .forms import AddressForm, LoginForm, ProfileEditForm, RegisterForm
+from .models import Account, Address, Profile
 from .permissions import current_account, login_required
 
 def register_view(request):
@@ -75,3 +77,62 @@ def logout_view(request):
     request.session.flush()
     messages.success(request, 'You have been logged out.')
     return redirect('accounts:login')
+
+
+#saves an address for the account; a new default replaces the old default of the same type
+def save_address(account, form):
+    with transaction.atomic():
+        address = form.save(commit=False)
+        address.account = account
+        if address.is_default:
+            Address.objects.filter(
+                account=account,
+                address_type=address.address_type,
+                is_default=True,
+            ).exclude(pk=address.pk).update(is_default=False)
+        address.save()
+    return address
+
+
+@login_required
+def address_list(request):
+    addresses = Address.objects.filter(account=current_account(request)).order_by('address_type', '-is_default', 'address_id')
+    return render(request, 'accounts/address_list.html', {'addresses': addresses})
+
+
+@login_required
+def address_create(request):
+    if request.method == 'POST':
+        form = AddressForm(request.POST)
+        if form.is_valid():
+            save_address(current_account(request), form)
+            messages.success(request, 'Address added.')
+            return redirect('accounts:address_list')
+    else:
+        form = AddressForm()
+
+    return render(request, 'accounts/address_form.html', {'form': form, 'page_title': 'Add address'})
+
+
+@login_required
+def address_edit(request, address_id):
+    address = get_object_or_404(Address, address_id=address_id, account=current_account(request))
+    if request.method == 'POST':
+        form = AddressForm(request.POST, instance=address)
+        if form.is_valid():
+            save_address(current_account(request), form)
+            messages.success(request, 'Address updated.')
+            return redirect('accounts:address_list')
+    else:
+        form = AddressForm(instance=address)
+
+    return render(request, 'accounts/address_form.html', {'form': form, 'page_title': 'Edit address'})
+
+
+@login_required
+@require_POST
+def address_delete(request, address_id):
+    address = get_object_or_404(Address, address_id=address_id, account=current_account(request))
+    address.delete()
+    messages.success(request, 'Address removed.')
+    return redirect('accounts:address_list')
