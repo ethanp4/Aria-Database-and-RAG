@@ -25,6 +25,7 @@
                 <div class="navbar-nav ms-sm-3">
                     {% comment %} <a class="nav-link" href="{% url 'accounts:account' %}">My Account</a> {% endcomment %}
                     {% if can_shop %}<a class="nav-link" href="{% url 'orders:history' %}">My orders</a>{% endif %}
+                    {% if is_staff_viewer %}<a class="nav-link" href="{% url 'orders:staff_list' %}">Orders</a>{% endif %}
                     <a class="nav-link" href="{% url 'accounts:address_list' %}">Addresses</a>
                     <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
                         {% csrf_token %}

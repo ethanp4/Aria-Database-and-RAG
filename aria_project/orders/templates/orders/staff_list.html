@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <h1 class="h2 mb-4">Orders</h1>
+    <form method="get" class="row g-2 align-items-end mb-4">
+        <div class="col-sm-3">
+            <label for="{{ form.status.id_for_label }}">Status</label>
+            <select name="status" id="{{ form.status.id_for_label }}" class="form-select">
+                {% for value, label in form.fields.status.choices %}<option value="{{ value }}"{% if form.data.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-3"><label for="{{ form.date_from.id_for_label }}">From</label> <input type="date" name="date_from" id="{{ form.date_from.id_for_label }}" class="form-control" value="{{ form.data.date_from|default:'' }}"></div>
+        <div class="col-sm-3"><label for="{{ form.date_to.id_for_label }}">To</label> <input type="date" name="date_to" id="{{ form.date_to.id_for_label }}" class="form-control" value="{{ form.data.date_to|default:'' }}"></div>
+        <div class="col-sm-3"><button type="submit" class="btn btn-primary">Filter</button></div>
+    </form>
+    {% if page_obj %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Order</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in page_obj %}
+                    <tr>
+                        <td><a class="text-decoration-none" href="{% url 'orders:staff_detail' order.order_id %}">#{{ order.order_id }}</a></td>
+                        <td>{{ order.created_at|date:"F j, Y" }}</td>
+                        <td>{% if order.account %}{{ order.account.username }}{% else %}Guest{% endif %}{% if order.contact_name %} ({{ order.contact_name }}){% endif %}</td>
+                        <td>{% include "orders/_status_badge.html" %}</td>
+                        <td class="text-end">{{ order.total_amount }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-3" aria-label="Order pages">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if query %}{{ query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <p>No orders match.</p>
+    {% endif %}
+</main>
+{% endblock %}
