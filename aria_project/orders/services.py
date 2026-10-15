@@ -135,8 +135,29 @@ def _void(gateway, order, ref):
     except GatewayTimeout:
         logger.error('void timed out: order=%s ref=%s', order.pk, ref)
         return
+    except Exception:
+        # no traceback: gateway exceptions may carry request details
+        logger.error('void raised: order=%s ref=%s', order.pk, ref)
+        return
     if not result.ok:
         logger.error('void failed: order=%s ref=%s', order.pk, ref)
+
+
+# release the authorization, then record the outcome; the void can't skip the status update
+def _abandon(gateway, order, payment, ref, payment_status, order_status):
+    _void(gateway, order, ref)
+    if payment is not None:
+        _set_payment_status(payment, payment_status)
+    _set_status(order, order_status)
+
+
+# a retried checkout (double submit, refresh after success) gets its order back, even when
+# the cart has since been cleared or prices changed; another owner's token is "not found"
+def _replayed(order, account):
+    if order.account_id != (account.pk if account else None):
+        raise Order.DoesNotExist
+    order.was_created = False
+    return order
 
 
 # one checkout token -> at most one order and one authorization.
@@ -145,6 +166,9 @@ def _void(gateway, order, ref):
 def place_order(account, cart_lines, *, contact, shipping, billing, shipping_method,
                 payment_token, last4, method_type, card_brand, checkout_token, gateway=None):
     gateway = gateway or get_gateway()
+    existing = Order.objects.filter(checkout_token=checkout_token).first()
+    if existing is not None:
+        return _replayed(existing, account)
     items, q, email = _validate(account, cart_lines, contact, shipping, billing, shipping_method)
 
     # step 1: the unique token decides which caller continues. a concurrent caller blocks on
@@ -166,10 +190,7 @@ def place_order(account, cart_lines, *, contact, shipping, billing, shipping_met
                 for pid, qty, price, total in items
             ])
     if not created:
-        if order.account_id != (account.pk if account else None):
-            raise Order.DoesNotExist
-        order.was_created = False
-        return order
+        return _replayed(order, account)
 
     def new_payment(status, ref=None):
         return Payment.objects.create(
@@ -185,16 +206,25 @@ def place_order(account, cart_lines, *, contact, shipping, billing, shipping_met
         new_payment(Payment.Status.FAILED)
         _set_status(order, Order.Status.PAYMENT_FAILED)
         raise PaymentFailed('The payment service did not respond.')
+    except Exception:
+        # outcome unknown and no ref to void; don't leave the order stuck in PENDING_PAYMENT
+        logger.error('authorize raised: order=%s', order.pk)
+        new_payment(Payment.Status.FAILED)
+        _set_status(order, Order.Status.PAYMENT_FAILED)
+        raise
     if not auth.ok:
         new_payment(Payment.Status.DECLINED)
         _set_status(order, Order.Status.PAYMENT_FAILED)
         raise PaymentDeclined(auth.error)
-    # committed now so the authorization ref survives a crash in step 3
-    payment = new_payment(Payment.Status.AUTHORIZED, auth.ref)
 
     # step 3: lock, check, decrement, confirm, then capture last so any db error rolls back
     # before money moves. a failed capture raises and rolls the stock back.
+    # from here on every exit path either confirms or voids the authorization.
+    payment = None
+    capture_entered = False
     try:
+        # committed before the lock so the authorization ref survives a crash in step 3
+        payment = new_payment(Payment.Status.AUTHORIZED, auth.ref)
         with transaction.atomic():
             locked = {
                 p.pk: p for p in
@@ -220,6 +250,7 @@ def place_order(account, cart_lines, *, contact, shipping, billing, shipping_met
             order.confirmed_payment = payment
             order.confirmed_at = timezone.now()
             order.save(update_fields=['status', 'confirmed_payment', 'confirmed_at', 'updated_at'])
+            capture_entered = True
             try:
                 captured = gateway.capture(auth.ref)
             except GatewayTimeout:
@@ -228,16 +259,19 @@ def place_order(account, cart_lines, *, contact, shipping, billing, shipping_met
                 raise _CaptureFailed(captured.error)
     # step 4: the atomic block rolled back; release the authorization
     except OutOfStock:
-        _void(gateway, order, auth.ref)
-        _set_payment_status(payment, Payment.Status.VOIDED)
-        _set_status(order, Order.Status.OUT_OF_STOCK)
+        _abandon(gateway, order, payment, auth.ref, Payment.Status.VOIDED, Order.Status.OUT_OF_STOCK)
         raise
     except _CaptureFailed:
         logger.error('capture failed: order=%s ref=%s', order.pk, auth.ref)
-        _void(gateway, order, auth.ref)
-        _set_payment_status(payment, Payment.Status.FAILED)
-        _set_status(order, Order.Status.PAYMENT_FAILED)
+        _abandon(gateway, order, payment, auth.ref, Payment.Status.FAILED, Order.Status.PAYMENT_FAILED)
         raise PaymentFailed('The payment could not be completed.')
+    except Exception:
+        # db error before capture, or capture raised with an unknown outcome: treated like a
+        # capture timeout (void + PAYMENT_FAILED), then the original error propagates
+        logger.error('unexpected error: order=%s ref=%s capture_entered=%s',
+                     order.pk, auth.ref, capture_entered)
+        _abandon(gateway, order, payment, auth.ref, Payment.Status.FAILED, Order.Status.PAYMENT_FAILED)
+        raise
 
     logger.info('order confirmed: order=%s ref=%s', order.pk, auth.ref)
     order.was_created = True
