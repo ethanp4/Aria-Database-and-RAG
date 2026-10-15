@@ -10,6 +10,7 @@ from accounts.models import Account, Address
 from cart.cart import CartLine
 from orders.models import Order
 from orders.pricing import quote
+import orders.services as services
 from orders.services import (
     AddressData, Contact, InvalidCheckout, OutOfStock, PaymentDeclined, PaymentFailed, place_order,
 )
@@ -363,6 +364,18 @@ class PlaceOrderTests(TestCase):
         )
 
 
+# authorize returns normally, then waits until both threads hold an authorization
+class RendezvousGateway(FakeGateway):
+    def __init__(self, barrier):
+        super().__init__()
+        self.barrier = barrier
+
+    def authorize(self, token, amount):
+        result = super().authorize(token, amount)
+        self.barrier.wait(timeout=10)
+        return result
+
+
 # two real threads, each with its own db connection, released together by a barrier
 class PlaceOrderConcurrencyTests(TransactionTestCase):
     def run_both(self, gw, jobs):
@@ -382,7 +395,7 @@ class PlaceOrderConcurrencyTests(TransactionTestCase):
             finally:
                 connection.close()
 
-        threads = [threading.Thread(target=worker, args=(i, *job)) for i, job in enumerate(jobs)]
+        threads = [threading.Thread(target=worker, args=(i, *job), daemon=True) for i, job in enumerate(jobs)]
         for t in threads:
             t.start()
         for t in threads:
@@ -393,7 +406,7 @@ class PlaceOrderConcurrencyTests(TransactionTestCase):
     def test_concurrent_last_unit_one_wins_loser_voided(self):
         self.product = make_product('LAST-1', '40.00', stock=1)
         alice = Account.objects.create(username='alice', password_hash='x')
-        gw = FakeGateway()
+        gw = RendezvousGateway(threading.Barrier(2))
         t1, t2 = uuid.uuid4(), uuid.uuid4()
         results = self.run_both(gw, [
             (alice, Contact('Alice Diver', 'alice@example.com'), t1),
@@ -421,7 +434,16 @@ class PlaceOrderConcurrencyTests(TransactionTestCase):
         gw = FakeGateway()
         token = uuid.uuid4()
         job = (None, Contact('Gina Guest', 'gina@example.com'), token)
-        results = self.run_both(gw, [job, job])
+        # both threads pass the early token lookup before either inserts its order
+        barrier = threading.Barrier(2)
+        real_validate = services._validate
+
+        def validate_after_rendezvous(*args, **kwargs):
+            barrier.wait(timeout=10)
+            return real_validate(*args, **kwargs)
+
+        with mock.patch('orders.services._validate', side_effect=validate_after_rendezvous):
+            results = self.run_both(gw, [job, job])
 
         for r in results:
             self.assertIsInstance(r, Order, results)
