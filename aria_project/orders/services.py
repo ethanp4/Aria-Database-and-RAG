@@ -64,6 +64,11 @@ class InvalidCheckout(CheckoutError):
     pass
 
 
+# message is shown to staff
+class InvalidTransition(CheckoutError):
+    pass
+
+
 class _CaptureFailed(Exception):
     pass
 
@@ -275,4 +280,21 @@ def place_order(account, cart_lines, *, contact, shipping, billing, shipping_met
 
     logger.info('order confirmed: order=%s ref=%s', order.pk, auth.ref)
     order.was_created = True
+    return order
+
+
+# staff action: only a confirmed order can ship; the row lock makes a double submit a no-op
+def mark_shipped(staff, order_id, carrier_id, tracking_number):
+    tracking_number = (tracking_number or '').strip()
+    if not tracking_number:
+        raise InvalidTransition('Please enter a tracking number.')
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order_id)
+        if order.status != Order.Status.CONFIRMED:
+            raise InvalidTransition('Only confirmed orders can be marked as shipped.')
+        order.status = Order.Status.SHIPPED
+        order.carrier_id = carrier_id
+        order.tracking_number = tracking_number
+        order.save(update_fields=['status', 'carrier', 'tracking_number', 'updated_at'])
+    logger.info('order shipped: order=%s staff=%s', order.pk, staff.pk)
     return order

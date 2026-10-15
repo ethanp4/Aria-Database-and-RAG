@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.core.management import call_command
 
 from accounts.models import Account
+from orders.models import Carrier
 from .models import Category, InventoryMovement, Product
 
 
@@ -169,6 +170,17 @@ class SampleDataCommandTests(TestCase):
         self.assertEqual(Account.objects.filter(profile__isnull=False).count(), 10)
         self.assertEqual(Category.objects.count(), 6)
         self.assertEqual(Product.objects.count(), 200)
+
+
+class SampleDataCarrierTests(TestCase):
+    def test_sample_data_creates_carriers_idempotently(self):
+        call_command('sample_data', verbosity=0)
+        names = {'Canada Post', 'Purolator', 'UPS', 'FedEx'}
+        self.assertEqual(set(Carrier.objects.values_list('name', flat=True)), names)
+        for carrier in Carrier.objects.all():
+            self.assertIn('{tracking_number}', carrier.tracking_url_template)
+        call_command('sample_data', verbosity=0)
+        self.assertEqual(Carrier.objects.count(), 4)
 
 
 class ProductManagementTests(TestCase):
