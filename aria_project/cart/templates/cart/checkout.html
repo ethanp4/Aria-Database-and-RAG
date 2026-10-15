@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <h1 class="h2 mb-4">Checkout</h1>
+
+    <div class="alert alert-warning" role="alert">Test payments: no real card is charged.</div>
+
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+
+    {% if error %}
+    <div class="alert alert-danger" role="alert">{{ error }}</div>
+    {% endif %}
+    {% if bad_region %}
+    <div class="alert alert-danger" role="alert">
+        We can't calculate tax for this shipping address. Please edit its province or state in
+        <a href="{% url 'accounts:address_list' %}">your address book</a>.
+    </div>
+    {% endif %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    {% if is_guest %}
+    <p>Have an account? <a href="{% url 'accounts:login' %}">Log in</a> / <a href="{% url 'accounts:register' %}">Register</a></p>
+    {% endif %}
+
+    <form method="post" id="checkout-form">
+        {% csrf_token %}
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div class="row g-4">
+            <div class="col-12 col-lg-7">
+                {% if is_guest %}
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Contact</h2>
+                        {% for field in form %}{% if field.name == 'contact_name' or field.name == 'contact_email' %}
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}{% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Shipping address</h2>
+                        {% if is_guest %}
+                            {% for field in form.ship_form %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+                                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        {% elif no_shipping_address %}
+                            <p class="mb-0">You don't have a shipping address yet.
+                                <a href="{% url 'accounts:address_create' %}">Add a shipping address</a> to continue.</p>
+                            {% if form.shipping_address.errors %}<div class="text-danger small mt-1">{{ form.shipping_address.errors }}</div>{% endif %}
+                        {% else %}
+                            {{ form.shipping_address }}
+                            {% if form.shipping_address.errors %}<div class="text-danger small mt-1">{{ form.shipping_address.errors }}</div>{% endif %}
+                            <a class="small" href="{% url 'accounts:address_list' %}">Manage addresses</a>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Billing address</h2>
+                        <div class="form-check mb-3">
+                            {{ form.billing_same }}
+                            <label class="form-check-label" for="{{ form.billing_same.id_for_label }}">{{ form.billing_same.label }}</label>
+                        </div>
+                        <p class="small text-body-secondary">Only needed if different from shipping.</p>
+                        {% if is_guest %}
+                            {% for field in form.bill_form %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+                                {% if form.validate_billing and field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            {{ form.billing_address }}
+                            {% if form.billing_address.errors %}<div class="text-danger small mt-1">{{ form.billing_address.errors }}</div>{% endif %}
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Shipping method</h2>
+                        {% for radio in form.shipping_method %}
+                        <div class="form-check">
+                            {{ radio.tag }}
+                            <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                        </div>
+                        {% endfor %}
+                        {% if form.shipping_method.errors %}<div class="text-danger small mt-1">{{ form.shipping_method.errors }}</div>{% endif %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm mt-3" formmethod="get" formnovalidate name="update" value="1">Update totals</button>
+                    </div>
+                </section>
+
+                <section class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Payment</h2>
+                        <p class="small text-body-secondary">Pick a test card. No card number is entered or stored.</p>
+                        {% for radio in form.test_card %}
+                        <div class="form-check">
+                            {{ radio.tag }}
+                            <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                        </div>
+                        {% endfor %}
+                        {% if form.test_card.errors %}<div class="text-danger small mt-1">{{ form.test_card.errors }}</div>{% endif %}
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <section class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Order summary</h2>
+                        <table class="table table-sm align-middle">
+                            <tbody>
+                                {% for line in lines %}
+                                <tr>
+                                    <td>{{ line.product.name }} &times; {{ line.quantity }}</td>
+                                    <td class="text-end">{{ line.line_total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr><th scope="row">Subtotal</th><td class="text-end">{{ subtotal }}</td></tr>
+                                {% if quote %}
+                                <tr><th scope="row">Shipping</th><td class="text-end">{{ quote.shipping_cost }}</td></tr>
+                                <tr><th scope="row">Tax ({{ quote.tax_label }})</th><td class="text-end">{{ quote.tax_amount }}</td></tr>
+                                <tr><th scope="row">Total</th><td class="text-end fw-semibold">{{ quote.total }}</td></tr>
+                                {% endif %}
+                            </tfoot>
+                        </table>
+                        {% if not quote %}
+                        <p class="small text-body-secondary">Enter your shipping address and select Update totals to see shipping, tax and your total.</p>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary w-100" data-place-order>Place order</button>
+                        <a class="btn btn-link w-100 mt-2" href="{% url 'cart:detail' %}">Back to cart</a>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </form>
+</main>
+<script>
+    // UI layer only: the server also rejects a second order for the same checkout token
+    (function () {
+        var form = document.getElementById('checkout-form');
+        var button = form.querySelector('[data-place-order]');
+        form.addEventListener('submit', function (event) {
+            if (event.submitter === button) { button.disabled = true; }
+        });
+        window.addEventListener('pageshow', function () { button.disabled = false; });
+    })();
+</script>
+{% endblock %}
