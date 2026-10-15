@@ -54,6 +54,13 @@ class InventoryMovement(models.Model):
     )
     change_qty = models.IntegerField()
     reason = models.CharField(max_length=20, choices=Reason.choices)
+    reference_order = models.ForeignKey(
+        'orders.Order',
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name='inventory_movements',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
