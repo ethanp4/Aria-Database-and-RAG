@@ -1,9 +1,10 @@
+import threading
 import uuid
 from decimal import Decimal
 from unittest import mock
 
-from django.db import DatabaseError
-from django.test import TestCase
+from django.db import DatabaseError, connection
+from django.test import TestCase, TransactionTestCase
 
 from accounts.models import Account, Address
 from cart.cart import CartLine
@@ -360,3 +361,78 @@ class PlaceOrderTests(TestCase):
             {'payment_id', 'order', 'amount', 'method_type', 'token', 'last4', 'card_brand',
              'status', 'gateway_ref', 'created_at'},
         )
+
+
+# two real threads, each with its own db connection, released together by a barrier
+class PlaceOrderConcurrencyTests(TransactionTestCase):
+    def run_both(self, gw, jobs):
+        barrier = threading.Barrier(2)
+        results = [None, None]
+
+        def worker(i, account, contact, token):
+            try:
+                barrier.wait(timeout=10)
+                results[i] = place_order(
+                    account, [line(self.product, 1)], contact=contact, shipping=BC, billing=BC,
+                    shipping_method='STANDARD', payment_token='tok_ok', last4='4242',
+                    method_type='CREDIT_CARD', card_brand='Visa', checkout_token=token, gateway=gw,
+                )
+            except BaseException as exc:
+                results[i] = exc
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=worker, args=(i, *job)) for i, job in enumerate(jobs)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=30)
+            self.assertFalse(t.is_alive())
+        return results
+
+    def test_concurrent_last_unit_one_wins_loser_voided(self):
+        self.product = make_product('LAST-1', '40.00', stock=1)
+        alice = Account.objects.create(username='alice', password_hash='x')
+        gw = FakeGateway()
+        t1, t2 = uuid.uuid4(), uuid.uuid4()
+        results = self.run_both(gw, [
+            (alice, Contact('Alice Diver', 'alice@example.com'), t1),
+            (None, Contact('Gina Guest', 'gina@example.com'), t2),
+        ])
+
+        wins = [r for r in results if isinstance(r, Order)]
+        losses = [r for r in results if isinstance(r, OutOfStock)]
+        self.assertEqual((len(wins), len(losses)), (1, 1), results)
+
+        statuses = sorted(Order.objects.values_list('status', flat=True))
+        self.assertEqual(statuses, sorted([Order.Status.CONFIRMED, Order.Status.OUT_OF_STOCK]))
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 0)
+        self.assertEqual(InventoryMovement.objects.filter(reason=InventoryMovement.Reason.SALE).count(), 1)
+        actions = [c[0] for c in gw.calls]
+        self.assertEqual(actions.count('authorize'), 2)
+        self.assertEqual(actions.count('capture'), 1)
+        self.assertEqual(actions.count('void'), 1)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.CAPTURED).count(), 1)
+        self.assertEqual(Payment.objects.filter(status=Payment.Status.VOIDED).count(), 1)
+
+    def test_concurrent_double_submit_same_token_authorizes_once(self):
+        self.product = make_product('DUP-1', '40.00', stock=5)
+        gw = FakeGateway()
+        token = uuid.uuid4()
+        job = (None, Contact('Gina Guest', 'gina@example.com'), token)
+        results = self.run_both(gw, [job, job])
+
+        for r in results:
+            self.assertIsInstance(r, Order, results)
+        self.assertEqual(results[0].pk, results[1].pk)
+        self.assertEqual(sorted(r.was_created for r in results), [False, True])
+
+        self.assertEqual(Order.objects.count(), 1)
+        self.assertEqual(Payment.objects.count(), 1)
+        order = Order.objects.get()
+        self.assertEqual(order.status, Order.Status.CONFIRMED)
+        self.assertEqual([c[0] for c in gw.calls], ['authorize', 'capture'])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 4)
+        self.assertEqual(InventoryMovement.objects.filter(reason=InventoryMovement.Reason.SALE).count(), 1)
