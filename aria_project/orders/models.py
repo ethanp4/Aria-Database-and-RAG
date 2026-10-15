@@ -103,7 +103,8 @@ class Order(models.Model):
                 name='order_confirmed_requires_payment',
             ),
             models.CheckConstraint(
-                condition=Q(account__isnull=False) | Q(contact_email__isnull=False),
+                condition=Q(account__isnull=False)
+                | (Q(contact_email__isnull=False) & ~Q(contact_email='')),
                 name='order_has_owner',
             ),
             models.CheckConstraint(condition=Q(ship_country__in=['CA', 'US']), name='order_ship_country_valid'),
