@@ -85,6 +85,8 @@ def logout_view(request):
 #saves an address for the account; a new default replaces the old default of the same type
 def save_address(account, form):
     with transaction.atomic():
+        # lock the owner so concurrent saves for one account run one at a time
+        Account.objects.select_for_update().get(pk=account.pk)
         address = form.save(commit=False)
         address.account = account
         if address.is_default:

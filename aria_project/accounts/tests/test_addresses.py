@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
@@ -121,10 +121,36 @@ class AddressTests(TestCase):
         self.assertTrue(billing_default.is_default)
         self.assertTrue(Address.objects.get(line1='New').is_default)
 
+    def test_editing_address_into_default_of_another_type_clears_that_types_default(self):
+        billing_default = make_address(self.me, line1='Bill', address_type='BILLING', is_default=True)
+        shipping = make_address(self.me, line1='Ship', address_type='SHIPPING')
+
+        response = self.client.post(
+            reverse('accounts:address_edit', args=[shipping.address_id]),
+            address_data(line1='Ship', address_type='BILLING', is_default='on'),
+        )
+
+        self.assertRedirects(response, reverse('accounts:address_list'))
+        billing_default.refresh_from_db()
+        shipping.refresh_from_db()
+        self.assertFalse(billing_default.is_default)
+        self.assertEqual(shipping.address_type, 'BILLING')
+        self.assertTrue(shipping.is_default)
+
+    def test_resubmitting_same_default_twice_does_not_error(self):
+        for _ in range(2):
+            response = self.client.post(
+                reverse('accounts:address_create'),
+                address_data(line1='Twice', is_default='on'),
+            )
+            self.assertRedirects(response, reverse('accounts:address_list'))
+
+        self.assertEqual(Address.objects.filter(account=self.me, is_default=True).count(), 1)
+
     def test_db_rejects_two_defaults_of_same_type(self):
         make_address(self.me, is_default=True)
 
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(IntegrityError), transaction.atomic():
             make_address(self.me, line1='Second', is_default=True)
 
     def test_rejects_country_outside_ca_us(self):
@@ -143,5 +169,7 @@ class AddressTests(TestCase):
             reverse('accounts:address_delete', args=[mine.address_id]),
         ]
         for url in urls:
-            with self.subTest(url=url):
-                self.assertRedirects(self.client.post(url), reverse('accounts:login'))
+            for method in (self.client.get, self.client.post):
+                with self.subTest(url=url, method=method.__name__):
+                    self.assertRedirects(method(url), reverse('accounts:login'))
+        self.assertTrue(Address.objects.filter(pk=mine.pk).exists())
