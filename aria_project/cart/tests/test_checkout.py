@@ -1,6 +1,7 @@
 import re
 import uuid
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core import mail
 from django.test import TestCase
@@ -89,15 +90,52 @@ class CheckoutTests(TestCase):
         # a fresh token per page view
         self.assertNotEqual(self.token_from(self.client.get(CHECKOUT)), self.token_from(r))
 
-    def test_guest_get_shows_login_link_and_update_totals_quotes(self):
+    def test_guest_get_shows_login_link(self):
         self.add_to_cart()
         r = self.client.get(CHECKOUT)
         self.assertContains(r, 'Have an account?')
         self.assertContains(r, reverse('accounts:login'))
         self.assertContains(r, reverse('accounts:register'))
-        r = self.client.get(CHECKOUT, {'ship-country': 'CA', 'ship-region': 'on',
-                                       'shipping_method': 'STANDARD', 'update': '1'})
-        self.assertContains(r, TOTAL)
+
+    def test_get_with_query_params_does_not_echo_guest_fields(self):
+        self.add_to_cart()
+        r = self.client.get(CHECKOUT, {'contact_name': 'Gina Guest', 'contact_email': 'gina@example.com',
+                                       'ship-line1': '77 Leak St', 'ship-country': 'CA',
+                                       'ship-region': 'ON', 'update': '1', 'action': 'update'})
+        self.assertEqual(r.status_code, 200)
+        for value in ('Gina Guest', 'gina@example.com', '77 Leak St', TOTAL):
+            self.assertNotContains(r, value)
+
+    def test_update_totals_button_posts_and_never_uses_a_get_form(self):
+        self.add_to_cart()
+        html = self.client.get(CHECKOUT).content.decode()
+        self.assertNotIn('formmethod="get"', html)
+        self.assertRegex(html, r'<button[^>]*name="action" value="update"[^>]*formnovalidate')
+
+    def test_update_totals_post_requotes_without_placing_order(self):
+        self.add_to_cart()
+        token = str(uuid.uuid4())
+        # incomplete guest form: no name or email yet
+        data = guest_data(token, total='', contact_name='', contact_email='',
+                          shipping_method='EXPRESS', **{'ship-region': 'bc'})
+        data['action'] = 'update'
+        with patch('cart.views.place_order') as placed, \
+                patch('payments.gateway.FakeGateway.authorize') as authorize:
+            r = self.client.post(CHECKOUT, data)
+        placed.assert_not_called()
+        authorize.assert_not_called()
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Order.objects.exists())
+        # BC 12% on 50.00 + 20.00 express = 78.40
+        self.assertContains(r, 'name="expected_total" value="78.40"')
+        self.assertEqual(self.token_from(r), token)
+        self.assertNotContains(r, 'This field is required')
+        # the normal submit with the re-quoted total places the order
+        data = guest_data(token, total='78.40', shipping_method='EXPRESS', **{'ship-region': 'bc'})
+        r = self.client.post(CHECKOUT, data)
+        order = Order.objects.get()
+        self.assertEqual(order.total_amount, Decimal('78.40'))
+        self.assertEqual(r.url, guest_order_url(order))
 
     def test_empty_cart_redirects_to_cart(self):
         self.assertRedirects(self.client.get(CHECKOUT), reverse('cart:detail'))

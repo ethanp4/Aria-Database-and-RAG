@@ -107,7 +107,7 @@
                         </div>
                         {% endfor %}
                         {% if form.shipping_method.errors %}<div class="text-danger small mt-1">{{ form.shipping_method.errors }}</div>{% endif %}
-                        <button type="submit" class="btn btn-outline-secondary btn-sm mt-3" formmethod="get" formnovalidate name="update" value="1">Update totals</button>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm mt-3" name="action" value="update" formnovalidate>Update totals</button>
                     </div>
                 </section>
 

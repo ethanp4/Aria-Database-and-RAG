@@ -63,7 +63,7 @@ MSG_DECLINED = "Your payment didn't go through. You have not been charged."
 MSG_TOTALS_CHANGED = 'Prices or totals changed. Please review and submit again.'
 MSG_REVIEW_TOTAL = 'Please review your total and submit again.'
 
-# query keys the "Update totals" GET may carry back into the form
+# posted keys "Update totals" carries back into the re-rendered form
 _GUEST_KEYS = ('contact_name', 'contact_email') + tuple(
     f'{prefix}-{name}' for prefix in ('ship', 'bill')
     for name in ('line1', 'line2', 'city', 'region', 'postal_code', 'country'))
@@ -107,7 +107,7 @@ def _quote_for(cart, form, values):
         return None, True
 
 
-def _initial_from_query(account, values):
+def _initial_from_values(account, values):
     initial = {'billing_same': 'billing_same' in values}
     keys = ('shipping_address', 'billing_address') if account is not None else _GUEST_KEYS
     for key in keys:
@@ -177,15 +177,31 @@ def checkout_view(request):
         return redirect('cart:detail')
     for name in cart.dropped:
         messages.warning(request, f'{name} is no longer available and was removed from your cart.')
-    initial = _initial_from_query(account, request.GET) if 'update' in request.GET else {}
-    form = CheckoutForm(account, initial=initial)
-    q, bad_region = _quote_for(cart, form, request.GET)
+    # query parameters are ignored: guest details and tokens never travel in a URL
+    form = CheckoutForm(account)
+    q, bad_region = _quote_for(cart, form, {})
     form.initial.update(checkout_token=uuid.uuid4(), expected_total=q.total if q else None)
+    return _render_checkout(request, cart, form, q, bad_region=bad_region)
+
+
+# "Update totals": re-quote the submitted selections and re-render, keeping the token.
+# the form is unbound (posted values as initial) so half-filled fields show no errors.
+# never places an order.
+def _update_totals(request, account, cart):
+    values = request.POST
+    form = CheckoutForm(account, initial=_initial_from_values(account, values))
+    q, bad_region = _quote_for(cart, form, values)
+    form.initial.update(checkout_token=_parse_uuid(values.get('checkout_token')) or uuid.uuid4(),
+                        expected_total=q.total if q else None)
     return _render_checkout(request, cart, form, q, bad_region=bad_region)
 
 
 def _checkout_post(request, account):
     cart = Cart(request)
+    if request.POST.get('action') == 'update':
+        if not cart.lines():
+            return redirect('cart:detail')
+        return _update_totals(request, account, cart)
     # a retried submit gets its order back even after the cart was cleared;
     # a token that belongs to someone else is "not found"
     token = _parse_uuid(request.POST.get('checkout_token'))
