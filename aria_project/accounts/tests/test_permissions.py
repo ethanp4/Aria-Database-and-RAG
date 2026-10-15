@@ -1,6 +1,6 @@
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -96,5 +96,5 @@ class PermissionTests(TestCase):
     def test_db_accepts_staff_and_rejects_unknown_account_type(self):
         make_account('staffer', ROLE_STAFF)
 
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(IntegrityError), transaction.atomic():
             make_account('root', 'superuser')
