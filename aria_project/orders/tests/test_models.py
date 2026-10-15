@@ -52,6 +52,10 @@ class OrderModelTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             make_order(account=None, contact_email=None)
 
+    def test_db_rejects_guest_order_with_blank_email(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            make_order(account=None, contact_email='')
+
     def test_account_order_without_email_ok(self):
         acct = Account.objects.create(username='buyer1', password_hash='x')
         make_order(account=acct, contact_email=None)
