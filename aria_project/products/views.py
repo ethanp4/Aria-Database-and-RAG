@@ -10,20 +10,13 @@ from django.urls import reverse
 from django.db import transaction
 
 from accounts.models import Account, Profile
+from accounts.permissions import ROLE_ADMIN, role_required
 from .forms import BrowseFiltersForm, CategoryForm, ProductForm
 from .models import Category, InventoryMovement, Product
 
 
+@role_required(ROLE_ADMIN)
 def dashboard_view(request):
-    account_id = request.session.get('account_id')
-    if not account_id:
-        messages.error(request, 'You are not logged in.')
-        return redirect('accounts:login')
-    account_type = Account.objects.get(account_id=account_id).account_type
-    if account_type != 'admin':
-        messages.error(request, 'You do not have permission to access the dashboard.')
-        return redirect('products:browse')
-    
     context = {
         'account_count': Account.objects.count(),
         'product_count': Product.objects.count(),
@@ -101,6 +94,7 @@ def browse_view(request):
     })
 
 
+@role_required(ROLE_ADMIN)
 def product_create_view(request):
     if request.method == 'POST':
         form = ProductForm(request.POST)
@@ -122,6 +116,7 @@ def product_create_view(request):
     })
 
 
+@role_required(ROLE_ADMIN)
 def product_edit_view(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
     if request.method == 'POST':
@@ -156,6 +151,7 @@ def product_edit_view(request, product_id):
     })
 
 
+@role_required(ROLE_ADMIN)
 def category_create_view(request):
     for_product = request.POST.get(
         'for_product',
@@ -186,6 +182,7 @@ def category_create_view(request):
         'product': product
     })
 
+@role_required(ROLE_ADMIN)
 def category_edit_view(request, category_id):
     category = get_object_or_404(Category, category_id=category_id)
     if request.method == 'POST':

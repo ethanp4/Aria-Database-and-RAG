@@ -21,7 +21,11 @@
             {% if username %}
                 <div class="navbar-nav ms-sm-3">
                     {% comment %} <a class="nav-link" href="{% url 'accounts:account' %}">My Account</a> {% endcomment %}
-                    <a class="nav-link" href="{% url 'accounts:logout' %}">Log Out</a>
+                    <a class="nav-link" href="{% url 'accounts:address_list' %}">Addresses</a>
+                    <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="nav-link btn btn-link">Log Out</button>
+                    </form>
                 </div>
             {% else %}
                 <div class="navbar-nav ms-sm-3">

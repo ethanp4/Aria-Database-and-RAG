@@ -148,7 +148,7 @@ class BrowseViewTests(TestCase):
 
 class SampleDataCommandTests(TestCase):
     def test_seed_command_creates_requested_sample_data_idempotently(self):
-        call_command('seed_sample_data', verbosity=0)
+        call_command('sample_data', verbosity=0)
 
         self.assertEqual(Account.objects.count(), 10)
         self.assertEqual(Account.objects.filter(profile__isnull=False).count(), 10)
@@ -163,7 +163,7 @@ class SampleDataCommandTests(TestCase):
             1,
         )
 
-        call_command('seed_sample_data', verbosity=0)
+        call_command('sample_data', verbosity=0)
 
         self.assertEqual(Account.objects.count(), 10)
         self.assertEqual(Account.objects.filter(profile__isnull=False).count(), 10)
@@ -283,7 +283,99 @@ class ProductManagementTests(TestCase):
         self.assertFalse(InventoryMovement.objects.exists())
 
 
+class ProductPermissionTests(TestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name='Fins')
+        self.product = Product.objects.create(
+            sku='FIN-01',
+            name='Paddle fins',
+            unit_price='99.00',
+            stock_quantity=4,
+        )
+        self.admin_urls = [
+            reverse('products:dashboard'),
+            reverse('products:product_create'),
+            reverse('products:product_edit', args=[self.product.product_id]),
+            reverse('products:category_create'),
+            reverse('products:category_edit', args=[self.category.category_id]),
+        ]
+
+    def log_in(self, account_type):
+        account = Account.objects.create(
+            username=f'{account_type}-account',
+            password_hash='hash',
+            account_type=account_type,
+        )
+        session = self.client.session
+        session['account_id'] = account.account_id
+        session.save()
+
+    def post_data(self):
+        return {
+            'sku': 'HACK-01',
+            'name': 'Hacked',
+            'unit_price': '0.01',
+            'currency': 'CAD',
+            'stock_quantity': '999',
+            'reorder_level': '1',
+            'inventory_reason': 'ADJUSTMENT',
+            'description': '',
+        }
+
+    def assert_nothing_changed(self):
+        self.product.refresh_from_db()
+        self.category.refresh_from_db()
+        self.assertEqual(self.product.name, 'Paddle fins')
+        self.assertEqual(self.product.stock_quantity, 4)
+        self.assertEqual(self.category.name, 'Fins')
+        self.assertEqual(Product.objects.count(), 1)
+        self.assertEqual(Category.objects.count(), 1)
+        self.assertFalse(InventoryMovement.objects.exists())
+
+    def test_anonymous_redirected_to_login_and_nothing_saved(self):
+        for url in self.admin_urls:
+            with self.subTest(url=url):
+                self.assertRedirects(
+                    self.client.get(url),
+                    reverse('accounts:login'),
+                )
+                self.assertRedirects(
+                    self.client.post(url, self.post_data()),
+                    reverse('accounts:login'),
+                )
+        self.assert_nothing_changed()
+
+    def test_customer_gets_403_on_product_and_category_pages(self):
+        self.log_in('user')
+        for url in self.admin_urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+                self.assertEqual(self.client.post(url, self.post_data()).status_code, 403)
+        self.assert_nothing_changed()
+
+    def test_staff_gets_403_on_product_and_category_pages(self):
+        self.log_in('staff')
+        for url in self.admin_urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+                self.assertEqual(self.client.post(url, self.post_data()).status_code, 403)
+        self.assert_nothing_changed()
+
+    def test_browse_stays_public(self):
+        self.assertEqual(self.client.get(reverse('products:browse')).status_code, 200)
+
+
 class CategoryManagementTests(TestCase):
+    def setUp(self):
+        account = Account.objects.create(
+            username='category-admin',
+            password_hash='hash',
+            account_type='admin',
+        )
+        session = self.client.session
+        session['account_id'] = account.account_id
+        session.save()
+
     def test_category_creation_returns_to_product_form_with_category_selected(self):
         response = self.client.post(
             reverse('products:category_create'),
