@@ -1,5 +1,7 @@
 import re
 from decimal import Decimal
+from smtplib import SMTPRecipientsRefused
+from unittest.mock import patch
 
 from django.core import mail
 from django.test import TestCase
@@ -178,6 +180,16 @@ class ConfirmationEmailTests(TestCase):
         self.assertIn('Mask P1', msg.body)
         self.assertIn('Standard', msg.body)
         self.assertNotIn('tok_test', msg.body)
+
+    def test_mail_failure_logged_without_customer_email(self):
+        order = make_order(contact_email='guest@example.com')
+        exc = SMTPRecipientsRefused({'guest@example.com': (550, b'no')})
+        with patch('orders.emails.send_mail', side_effect=exc):
+            with self.assertLogs('orders.emails', level='ERROR') as logs:
+                send_order_confirmation(order, 'http://testserver/x')
+        output = '\n'.join(logs.output)
+        self.assertIn(str(order.pk), output)
+        self.assertNotIn('guest@example.com', output)
 
     def test_no_email_when_no_contact_email(self):
         order = make_order(account=make_account('frank'), contact_email=None)
