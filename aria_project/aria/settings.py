@@ -154,3 +154,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+# Payments (TEMPORARY fake gateway until Stripe; see docs/follow-ups.md)
+ARIA_PAYMENT_GATEWAY = env('ARIA_PAYMENT_GATEWAY', default='payments.gateway.FakeGateway')
