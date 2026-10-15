@@ -20,6 +20,7 @@ def register_view(request):
             messages.success(request, 'Login created. Please finish your profile.')
 
             account = Account.objects.get(username=data['username'])
+            request.session.cycle_key()  # new session id on login (prevents session fixation)
             request.session['account_id'] = account.account_id
             request.session['username'] = account.username
 
@@ -42,6 +43,7 @@ def login_view(request):
                 account = None
 
             if account and check_password(password, account.password_hash):
+                request.session.cycle_key()  # new session id on login (prevents session fixation)
                 request.session['account_id'] = account.account_id
                 request.session['username'] = account.username
                 messages.success(request, f'Welcome back, {account.username}.')
@@ -73,6 +75,7 @@ def update_profile(request):
     return render(request, 'accounts/auth.html', {'form': form, 'page_title': "Create profile"})
 
 
+@require_POST
 def logout_view(request):
     request.session.flush()
     messages.success(request, 'You have been logged out.')
