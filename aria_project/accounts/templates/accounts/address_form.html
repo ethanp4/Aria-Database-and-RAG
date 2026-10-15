@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-6 col-xl-5">
+            <section class="card border-0 shadow-sm" aria-labelledby="address-form-heading">
+                <div class="card-body p-4 p-md-5">
+                    <h1 id="address-form-heading" class="h2 mb-4">{{ page_title }}</h1>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-warning" role="alert">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        {% for field in form %}
+                            {% if field.name == 'is_default' %}
+                            <div class="form-check mb-3">
+                                {{ field }}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            </div>
+                            {% else %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                <div class="text-danger small mt-1">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <button type="submit" class="btn btn-primary w-100">Save address</button>
+                        <a class="btn btn-link w-100 mt-2" href="{% url 'accounts:address_list' %}">Cancel</a>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+{% endblock %}
