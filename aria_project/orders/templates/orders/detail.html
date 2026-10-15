@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_id }}{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    {% if is_guest %}
+    <div class="alert alert-info" role="alert">Bookmark this page to check your order later.</div>
+    {% else %}
+    <p><a class="text-decoration-none" href="{% url 'orders:history' %}">&larr; My orders</a></p>
+    {% endif %}
+    {% include "orders/_order_body.html" %}
+</main>
+{% endblock %}

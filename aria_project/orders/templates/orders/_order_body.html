@@ -1,0 +1,62 @@
+<div class="d-flex align-items-center gap-3 mb-3">
+    <h1 class="h2 mb-0">Order #{{ order.order_id }}</h1>
+    {% include "orders/_status_badge.html" %}
+</div>
+<p class="text-muted">Placed {{ order.created_at|date:"F j, Y" }}</p>
+
+{% if tracking_url %}
+<p>Shipped with {{ order.carrier.name }}: <a href="{{ tracking_url }}" rel="noopener noreferrer">Track package ({{ order.tracking_number }})</a></p>
+{% elif order.carrier and order.tracking_number %}
+<p>Shipped with {{ order.carrier.name }}. Tracking number: {{ order.tracking_number }}</p>
+{% endif %}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col" class="text-end">Price</th>
+                    <th scope="col" class="text-end">Qty</th>
+                    <th scope="col" class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td class="text-end">{{ item.unit_price }}</td>
+                    <td class="text-end">{{ item.quantity }}</td>
+                    <td class="text-end">{{ item.line_total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<dl class="row mb-4" style="max-width: 24rem;">
+    <dt class="col-6">Subtotal</dt><dd class="col-6 text-end">{{ order.subtotal }}</dd>
+    <dt class="col-6">Shipping</dt><dd class="col-6 text-end">{{ order.shipping_cost }}</dd>
+    <dt class="col-6">Tax</dt><dd class="col-6 text-end">{{ order.tax_amount }}</dd>
+    <dt class="col-6">Total</dt><dd class="col-6 text-end fw-semibold">{{ order.total_amount }}</dd>
+</dl>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <h2 class="h6">Ship to</h2>
+        <address>{% for line in ship_lines %}{{ line }}<br>{% endfor %}</address>
+    </div>
+    <div class="col-md-4">
+        <h2 class="h6">Bill to</h2>
+        <address>{% for line in bill_lines %}{{ line }}<br>{% endfor %}</address>
+    </div>
+    <div class="col-md-4">
+        <h2 class="h6">Shipping method</h2>
+        <p>{{ shipping_label }}</p>
+        {% if payment_display %}
+        <h2 class="h6">Payment</h2>
+        <p>{{ payment_display }}</p>
+        {% endif %}
+    </div>
+</div>
