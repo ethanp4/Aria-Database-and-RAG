@@ -17,8 +17,8 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 
 ## Project layout (`aria_project/`)
 - `aria/`: settings, root urls
-- `accounts/`: Account (login) + Profile models, register/login/logout/profile views,
-  context processors that put `profile`, `account_id`, `username` in every template
+- `accounts/`: Account (login), Profile, Address models; register/login/logout/profile and
+  address-book views; `permissions.py` (role decorators); context processors that put `profile`, `account_id`, `username` in every template
 - `products/`: Category, Product, InventoryMovement; browse page, admin dashboard,
   product/category create+edit; `sample_data` management command
 - `core/`: home page
