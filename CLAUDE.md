@@ -27,8 +27,12 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 ## Auth (custom, not django.contrib.auth)
 - Login checks `Account.password_hash` (Django hashers) and stores `account_id` and
   `username` in the session. Read the current user from `request.session['account_id']`.
-- Role lives in `Account.account_type`; the DB check constraint currently allows only
-  `'user'` and `'admin'`. A staff role still needs to be added via migration.
+- Role lives in `Account.account_type`: `'user'` (customer), `'staff'`, `'admin'`
+  (constants `ROLE_CUSTOMER`, `ROLE_STAFF`, `ROLE_ADMIN` in `accounts/models.py`).
+- Gate every view with `accounts/permissions.py`: `@login_required` or
+  `@role_required(ROLE_STAFF, ROLE_ADMIN)`; get the user with `current_account(request)`.
+  Not logged in → login redirect; wrong role → 403; another customer's object → 404
+  (filter the lookup by `account=current_account(request)`).
 - `/admin/` is the stock Django admin and uses a separate user system; don't rely on it
   for app roles.
 
@@ -36,6 +40,9 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 - Start stack (repo root): `docker compose up --build` (needs Postgres on the host)
 - Run locally: `python manage.py runserver`
 - Tests: `python manage.py test`  (run before every commit)
+  Django 6.1 needs Python >= 3.12. If the host Python is older, run in the Docker image
+  (repo root, Git Bash):
+  `MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)/aria_project:/app" -e DB_HOST=host.docker.internal django python manage.py test`
 - Migrations: `python manage.py makemigrations` / `python manage.py migrate`
 - Sample data: `python manage.py sample_data --password <pw>`
 - Lint/format: none configured yet
@@ -46,8 +53,9 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 - `schema.sql`, `sample-data.sql`, `drop-and-recreate-db.ps1` (repo root) are Phase 1
   design artifacts. `schema.sql` does not run as-is and does not match the models; use it
   only as a reference when adding models for orders, payments, refunds, etc.
-- Implemented tables: `accounts`, `profiles`, `categories`, `products`, `inventory_movements`.
-- Planned (designed in `schema.sql`, no models yet): `addresses`, `carriers`, `orders`,
+- Implemented tables: `accounts`, `profiles`, `addresses`, `categories`, `products`,
+  `inventory_movements`.
+- Planned (designed in `schema.sql`, no models yet): `carriers`, `orders`,
   `order_items`, `payments`, `refunds`, `accounts_receivable`, `accounts_payable`,
   `policy_documents`.
 - Stock changes must write an `InventoryMovement` in the same transaction
@@ -56,13 +64,11 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 ## Roles and permissions (enforce SERVER-SIDE in every view, never only in the UI)
 - Customer (`account_type='user'`): order, request refunds, see ONLY their own history.
   Cannot approve refunds, edit products, or see analytics.
-- Staff (not yet implemented): view all orders, approve refunds, use chatbot.
+- Staff (`account_type='staff'`): view all orders, approve refunds, use chatbot.
   Payment details are masked. Cannot edit products or see analytics.
 - Admin (`account_type='admin'`): analytics, edit products, oversee refunds
   (incl. duplicate-refund flags).
 - Shipper: does not sign in, no screen. Do not build one.
-- Known gap: product and category create/edit views have no auth check yet; only
-  `dashboard_view` checks for admin. Fix before building on them.
 
 ## Critical invariants (do not break; add tests when touching these)
 1. An order must NEVER show "Confirmed" unless payment succeeded.
