@@ -1,2 +1,4 @@
 __pycache__
 *.pyc
+.env
+aria_project\aria\.env

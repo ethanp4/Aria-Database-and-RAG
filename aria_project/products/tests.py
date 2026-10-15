@@ -148,7 +148,7 @@ class BrowseViewTests(TestCase):
 
 class SampleDataCommandTests(TestCase):
     def test_seed_command_creates_requested_sample_data_idempotently(self):
-        call_command('seed_sample_data', verbosity=0)
+        call_command('sample_data', verbosity=0)
 
         self.assertEqual(Account.objects.count(), 10)
         self.assertEqual(Account.objects.filter(profile__isnull=False).count(), 10)
@@ -163,7 +163,7 @@ class SampleDataCommandTests(TestCase):
             1,
         )
 
-        call_command('seed_sample_data', verbosity=0)
+        call_command('sample_data', verbosity=0)
 
         self.assertEqual(Account.objects.count(), 10)
         self.assertEqual(Account.objects.filter(profile__isnull=False).count(), 10)
