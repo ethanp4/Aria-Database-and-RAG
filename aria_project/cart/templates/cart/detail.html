@@ -55,6 +55,9 @@
     {% if has_stock_problem %}
     <p class="text-danger mt-3">Some items are over the available stock. Please lower the quantity.</p>
     {% endif %}
+    <div class="text-end mt-3">
+        <a class="btn btn-primary" href="{% url 'cart:checkout' %}">Checkout</a>
+    </div>
     {% else %}
     <div class="card border-0 bg-body-tertiary">
         <div class="card-body py-5 text-center">

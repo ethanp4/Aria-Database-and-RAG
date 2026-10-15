@@ -1,0 +1,305 @@
+import re
+import uuid
+from decimal import Decimal
+
+from django.core import mail
+from django.test import TestCase
+from django.urls import reverse
+
+from accounts.models import ROLE_ADMIN, ROLE_CUSTOMER, ROLE_STAFF, Account, Address, Profile
+from orders.links import guest_order_url
+from orders.models import Order
+from products.models import Product
+
+CHECKOUT = reverse('cart:checkout')
+TOKEN_RE = re.compile(r'name="checkout_token" value="([0-9a-f-]{36})"')
+DECLINED = 'Your payment didn&#x27;t go through. You have not been charged.'
+
+# one 50.00 item, Standard 12.00, ON HST 13% on goods + shipping: 62.00 + 8.06
+TOTAL = '70.06'
+
+
+def make_account(username, role=ROLE_CUSTOMER):
+    return Account.objects.create(username=username, password_hash='x', account_type=role)
+
+
+def make_address(account, address_type=Address.AddressType.SHIPPING, region='ON', default=True, **kw):
+    fields = dict(account=account, address_type=address_type, line1='1 Reef Rd', city='Toronto',
+                  region=region, postal_code='M5V 1A1', country='CA', is_default=default)
+    fields.update(kw)
+    return Address.objects.create(**fields)
+
+
+def login(client, account):
+    session = client.session
+    session['account_id'] = account.account_id
+    session.save()
+
+
+def guest_data(token, total=TOTAL, **over):
+    data = {
+        'contact_name': 'Gina Guest', 'contact_email': 'gina@example.com',
+        'ship-line1': '1 Reef Rd', 'ship-line2': '', 'ship-city': 'Toronto', 'ship-region': 'ON',
+        'ship-postal_code': 'M5V 1A1', 'ship-country': 'CA',
+        'billing_same': 'on', 'shipping_method': 'STANDARD', 'test_card': 'visa_ok',
+        'checkout_token': token, 'expected_total': total,
+    }
+    data.update(over)
+    return {k: v for k, v in data.items() if v is not None}
+
+
+def customer_data(token, shipping_address, total=TOTAL, **over):
+    data = {
+        'shipping_address': shipping_address.pk, 'billing_same': 'on',
+        'shipping_method': 'STANDARD', 'test_card': 'visa_ok',
+        'checkout_token': token, 'expected_total': total,
+    }
+    data.update(over)
+    return {k: v for k, v in data.items() if v is not None}
+
+
+class CheckoutTests(TestCase):
+    def setUp(self):
+        self.mask = Product.objects.create(sku='MASK-1', name='Mask', unit_price=Decimal('50.00'),
+                                           stock_quantity=5)
+        self.alice = make_account('alice')
+        Profile.objects.create(account=self.alice, first_name='Alice', last_name='Diver',
+                               email='alice@example.com')
+        self.alice_ship = make_address(self.alice)
+
+    def add_to_cart(self, qty=1):
+        self.client.post(reverse('cart:add', args=[self.mask.pk]), {'quantity': qty})
+
+    def token_from(self, response):
+        return TOKEN_RE.search(response.content.decode()).group(1)
+
+    def test_checkout_get_renders_token_test_cards_and_quote(self):
+        login(self.client, self.alice)
+        self.add_to_cart()
+        r = self.client.get(CHECKOUT)
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        uuid.UUID(self.token_from(r))
+        self.assertContains(r, 'Test payments: no real card is charged.')
+        self.assertContains(r, 'Visa •••• 4242 (approves)')
+        self.assertContains(r, 'Visa •••• 0002 (declined)')
+        self.assertContains(r, TOTAL)
+        self.assertContains(r, '8.06')
+        self.assertNotIn('tok_', html)
+        # a fresh token per page view
+        self.assertNotEqual(self.token_from(self.client.get(CHECKOUT)), self.token_from(r))
+
+    def test_guest_get_shows_login_link_and_update_totals_quotes(self):
+        self.add_to_cart()
+        r = self.client.get(CHECKOUT)
+        self.assertContains(r, 'Have an account?')
+        self.assertContains(r, reverse('accounts:login'))
+        self.assertContains(r, reverse('accounts:register'))
+        r = self.client.get(CHECKOUT, {'ship-country': 'CA', 'ship-region': 'on',
+                                       'shipping_method': 'STANDARD', 'update': '1'})
+        self.assertContains(r, TOTAL)
+
+    def test_empty_cart_redirects_to_cart(self):
+        self.assertRedirects(self.client.get(CHECKOUT), reverse('cart:detail'))
+
+    def test_guest_checkout_success_redirects_to_private_link_clears_cart_and_emails(self):
+        self.add_to_cart()
+        token = str(uuid.uuid4())
+        r = self.client.post(CHECKOUT, guest_data(token))
+        order = Order.objects.get()
+        self.assertEqual(order.status, Order.Status.CONFIRMED)
+        self.assertIsNone(order.account)
+        self.assertEqual(order.contact_email, 'gina@example.com')
+        self.assertRedirects(r, guest_order_url(order), fetch_redirect_response=False)
+        self.assertFalse(self.client.session.get('cart'))
+        self.assertEqual(len(mail.outbox), 1)
+        body = mail.outbox[0].body
+        self.assertIn('http://testserver' + guest_order_url(order), body)
+        self.assertNotIn('tok_', body)
+        self.assertIn('•••• 4242', body)
+        self.assertNotRegex(body.replace('•••• 4242', ''), r'4242')
+        page = self.client.get(r.url)
+        self.assertContains(page, f'Order #{order.pk} confirmed.')
+
+    def test_customer_checkout_success_redirects_to_order_detail(self):
+        login(self.client, self.alice)
+        self.add_to_cart()
+        r = self.client.post(CHECKOUT, customer_data(str(uuid.uuid4()), self.alice_ship))
+        order = Order.objects.get()
+        self.assertEqual(order.account, self.alice)
+        self.assertEqual(order.status, Order.Status.CONFIRMED)
+        self.assertEqual(order.contact_name, 'Alice Diver')
+        self.assertEqual(order.bill_line1, '1 Reef Rd')
+        self.assertRedirects(r, reverse('orders:detail', args=[order.pk]), fetch_redirect_response=False)
+        self.assertFalse(self.client.session.get('cart'))
+        self.assertEqual([m.to for m in mail.outbox], [['alice@example.com']])
+        self.assertContains(self.client.get(r.url), f'Order #{order.pk} confirmed.')
+
+    def test_customer_without_profile_checks_out_with_username(self):
+        bob = make_account('bob')
+        login(self.client, bob)
+        ship = make_address(bob)
+        self.add_to_cart()
+        self.client.post(CHECKOUT, customer_data(str(uuid.uuid4()), ship))
+        order = Order.objects.get()
+        self.assertEqual(order.contact_name, 'bob')
+        self.assertIsNone(order.contact_email)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_guest_checkout_requires_name_email_and_valid_address(self):
+        self.add_to_cart()
+        cases = {
+            'name': {'contact_name': '   '},
+            'email': {'contact_email': '   '},
+            'region': {'ship-region': 'ZZ'},
+            'city': {'ship-city': ''},
+            'billing': {'billing_same': None, 'bill-line1': ''},
+        }
+        for label, over in cases.items():
+            with self.subTest(label):
+                r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4()), **over))
+                self.assertEqual(r.status_code, 200)
+                self.assertFalse(Order.objects.exists())
+        r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4()), **{'ship-region': 'ZZ'}))
+        self.assertContains(r, 'Use the 2-letter province or state code')
+
+    def test_checkout_declined_rerenders_with_message_and_keeps_cart(self):
+        self.add_to_cart()
+        token = str(uuid.uuid4())
+        r = self.client.post(CHECKOUT, guest_data(token, test_card='visa_decline'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, DECLINED)
+        self.assertNotEqual(self.token_from(r), token)
+        self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 1})
+        self.assertFalse(Order.objects.filter(status=Order.Status.CONFIRMED).exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_capture_timeout_rerenders_with_message(self):
+        self.add_to_cart()
+        r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4()), test_card='visa_timeout'))
+        self.assertContains(r, DECLINED)
+        self.mask.refresh_from_db()
+        self.assertEqual(self.mask.stock_quantity, 5)
+
+    def test_replayed_failed_token_redirects_without_clearing_cart(self):
+        self.add_to_cart()
+        token = str(uuid.uuid4())
+        self.client.post(CHECKOUT, guest_data(token, test_card='visa_decline'))
+        r = self.client.post(CHECKOUT, guest_data(token))
+        order = Order.objects.get()
+        self.assertRedirects(r, guest_order_url(order))
+        self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 1})
+        self.assertEqual(Order.objects.count(), 1)
+
+    def test_checkout_out_of_stock_redirects_to_cart_with_message(self):
+        self.add_to_cart()
+        Product.objects.filter(pk=self.mask.pk).update(stock_quantity=0)
+        r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4())), follow=True)
+        self.assertRedirects(r, reverse('cart:detail'))
+        self.assertContains(r, 'Sorry, Mask sold out before your order completed. You have not been charged.')
+        self.assertFalse(Order.objects.filter(status=Order.Status.CONFIRMED).exists())
+
+    def test_price_change_since_checkout_page_blocks_order(self):
+        login(self.client, self.alice)
+        self.add_to_cart()
+        page = self.client.get(CHECKOUT)
+        token = self.token_from(page)
+        self.assertContains(page, TOTAL)
+        Product.objects.filter(pk=self.mask.pk).update(unit_price=Decimal('60.00'))
+        r = self.client.post(CHECKOUT, customer_data(token, self.alice_ship))
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Order.objects.exists())
+        self.assertContains(r, 'Prices or totals changed. Please review and submit again.')
+        # 72.00 + 13% = 81.36
+        self.assertContains(r, '81.36')
+        self.assertContains(r, 'name="expected_total" value="81.36"')
+        # submitting again with the new total goes through
+        r = self.client.post(CHECKOUT, customer_data(token, self.alice_ship, total='81.36'))
+        self.assertEqual(Order.objects.get().total_amount, Decimal('81.36'))
+
+    def test_missing_expected_total_asks_for_review(self):
+        self.add_to_cart()
+        r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4()), total=''))
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Order.objects.exists())
+        self.assertContains(r, 'name="expected_total" value="70.06"')
+
+    def test_checkout_rejects_other_customers_or_wrong_type_address(self):
+        bob = make_account('bob')
+        bob_ship = make_address(bob)
+        alice_bill = make_address(self.alice, Address.AddressType.BILLING)
+        login(self.client, self.alice)
+        self.add_to_cart()
+        cases = {
+            'other customer shipping': customer_data(str(uuid.uuid4()), bob_ship),
+            'billing as shipping': customer_data(str(uuid.uuid4()), alice_bill),
+            'other customer billing': customer_data(str(uuid.uuid4()), self.alice_ship,
+                                                    billing_same=None, billing_address=bob_ship.pk),
+        }
+        for label, data in cases.items():
+            with self.subTest(label):
+                r = self.client.post(CHECKOUT, data)
+                self.assertEqual(r.status_code, 200)
+                self.assertFalse(Order.objects.exists())
+        # the other customer's address is never offered
+        self.assertNotContains(self.client.get(CHECKOUT), f'value="{bob_ship.pk}"')
+
+    def test_customer_billing_may_be_any_own_address(self):
+        alice_bill = make_address(self.alice, Address.AddressType.BILLING, line1='9 Bill St')
+        login(self.client, self.alice)
+        self.add_to_cart()
+        self.client.post(CHECKOUT, customer_data(str(uuid.uuid4()), self.alice_ship,
+                                                 billing_same=None, billing_address=alice_bill.pk))
+        self.assertEqual(Order.objects.get().bill_line1, '9 Bill St')
+
+    def test_customer_address_with_bad_region_shows_edit_message(self):
+        carl = make_account('carl')
+        bad = make_address(carl, region='Ontario')
+        login(self.client, carl)
+        self.add_to_cart()
+        r = self.client.get(CHECKOUT)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, reverse('accounts:address_list'))
+        r = self.client.post(CHECKOUT, customer_data(str(uuid.uuid4()), bad))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "calculate tax")
+        self.assertFalse(Order.objects.exists())
+
+    def test_customer_without_shipping_address_gets_add_link(self):
+        dan = make_account('dan')
+        login(self.client, dan)
+        self.add_to_cart()
+        r = self.client.get(CHECKOUT)
+        self.assertContains(r, reverse('accounts:address_create'))
+
+    def test_checkout_double_post_same_token_creates_one_order_and_one_email(self):
+        self.add_to_cart()
+        data = guest_data(str(uuid.uuid4()))
+        r1 = self.client.post(CHECKOUT, data)
+        r2 = self.client.post(CHECKOUT, data)
+        order = Order.objects.get()
+        self.assertEqual(r1.url, guest_order_url(order))
+        self.assertEqual(r2.url, guest_order_url(order))
+        self.assertEqual(len(mail.outbox), 1)
+        self.mask.refresh_from_db()
+        self.assertEqual(self.mask.stock_quantity, 4)
+
+    def test_other_owners_token_is_404(self):
+        login(self.client, self.alice)
+        self.add_to_cart()
+        token = str(uuid.uuid4())
+        self.client.post(CHECKOUT, customer_data(token, self.alice_ship))
+        self.client.logout()
+        self.add_to_cart()
+        r = self.client.post(CHECKOUT, guest_data(token))
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(Order.objects.count(), 1)
+
+    def test_staff_and_admin_get_403_on_checkout(self):
+        for role in (ROLE_STAFF, ROLE_ADMIN):
+            with self.subTest(role=role):
+                login(self.client, make_account(role + 'x', role))
+                self.assertEqual(self.client.get(CHECKOUT).status_code, 403)
+                r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4())))
+                self.assertEqual(r.status_code, 403)
+        self.assertFalse(Order.objects.exists())
