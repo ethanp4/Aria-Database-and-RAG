@@ -1,18 +1,24 @@
 from django.db import models
 
+# account_type values: customer, staff, admin
+ROLE_CUSTOMER = 'user'
+ROLE_STAFF = 'staff'
+ROLE_ADMIN = 'admin'
+ROLES = (ROLE_CUSTOMER, ROLE_STAFF, ROLE_ADMIN)
+
 #accounts cant be updated
 class Account(models.Model):
     account_id = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
     password_hash = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
-    account_type = models.CharField(max_length=50, default='user')
+    account_type = models.CharField(max_length=50, default=ROLE_CUSTOMER)
 
     class Meta:
         db_table = 'accounts'
         constraints = [
             models.UniqueConstraint(fields=['username'], name='unique_username'),
-            models.CheckConstraint(condition=models.Q(account_type__in=['user', 'admin']), name='valid_account_type'),
+            models.CheckConstraint(condition=models.Q(account_type__in=list(ROLES)), name='valid_account_type'),
         ]
 
     def __str__(self):
