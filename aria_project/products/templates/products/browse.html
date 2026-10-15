@@ -108,7 +108,7 @@
                                     {% if product.category %}
                                     <p class="small text-body-secondary mb-2">{{ product.category.name }}</p>
                                     {% endif %}
-                                    <h3 class="h5">{{ product.name }}</h3>
+                                    <h3 class="h5"><a class="text-decoration-none" href="{% url 'products:detail' product.product_id %}">{{ product.name }}</a></h3>
                                     {% if product.description %}
                                     <p class="text-body-secondary">{{ product.description }}</p>
                                     {% endif %}

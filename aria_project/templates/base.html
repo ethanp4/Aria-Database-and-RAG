@@ -16,6 +16,9 @@
             <a class="navbar-brand fw-semibold" href="{% url 'core:home' %}">ARIA Home</a>
             <div class="navbar-nav ms-sm-auto">
                 <a class="nav-link" href="{% url 'products:browse' %}">View store</a>
+                {% if can_shop %}
+                <a class="nav-link" href="{% url 'cart:detail' %}">Cart ({{ cart_count }})</a>
+                {% endif %}
             </div>
 
             {% if username %}

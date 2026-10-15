@@ -11,6 +11,7 @@ from django.db import transaction
 
 from accounts.models import Account, Profile
 from accounts.permissions import ROLE_ADMIN, role_required
+from cart.forms import AddToCartForm
 from .forms import BrowseFiltersForm, CategoryForm, ProductForm
 from .models import Category, InventoryMovement, Product
 
@@ -91,6 +92,16 @@ def browse_view(request):
         'page_obj': page_obj,
         'page_range': page_range,
         'query_string': query_params.urlencode(),
+    })
+
+
+# public product page; inactive products 404
+def product_detail_view(request, product_id):
+    product = get_object_or_404(
+        Product.objects.select_related('category'), pk=product_id, is_active=True)
+    return render(request, 'products/product_details.html', {
+        'product': product,
+        'add_form': AddToCartForm(),
     })
 
 

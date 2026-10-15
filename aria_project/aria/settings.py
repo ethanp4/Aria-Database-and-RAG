@@ -86,6 +86,7 @@ TEMPLATES = [
                 #automatically load the profile info on all pages
                 "accounts.context_preprocessors.current_profile",
                 "accounts.context_preprocessors.account_info",
+                "cart.context_processors.cart_info",
             ],
         },
     },
