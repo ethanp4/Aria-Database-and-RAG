@@ -141,3 +141,27 @@ class ProductDetailTests(TestCase):
         self.assertContains(resp, 'Masks')
         resp = self.client.get(reverse('products:detail', args=[hidden.product_id]))
         self.assertEqual(resp.status_code, 404)
+
+
+class CorruptSessionCartTests(TestCase):
+    def test_bad_session_cart_shapes_do_not_break_pages(self):
+        product = make_product('MASK-1', 'Mask')
+        pid = str(product.product_id)
+        bad_shapes = {
+            'non-dict': ['1', 2],
+            'bad key': {'abc': 1, pid: 1},
+            'bad quantity': {pid: 'lots', '99999': -3, '7': True, '8': 1.5},
+            'over 99': {pid: 500},
+        }
+        for name, value in bad_shapes.items():
+            with self.subTest(shape=name):
+                session = self.client.session
+                session['cart'] = value
+                session.save()
+                self.assertEqual(self.client.get(reverse('cart:detail')).status_code, 200)
+                self.assertEqual(self.client.get(reverse('products:browse')).status_code, 200)
+        session = self.client.session
+        session['cart'] = {pid: 500}
+        session.save()
+        self.assertContains(self.client.get(reverse('cart:detail')), 'value="99"')
+

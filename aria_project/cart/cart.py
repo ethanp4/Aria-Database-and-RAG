@@ -22,9 +22,20 @@ class Cart:
         self.dropped = []
         self._lines = None
 
+    # session data is untrusted: keep only digit keys with int quantities >= 1, clamped to 99
     @property
     def _data(self):
-        return self.request.session.get(SESSION_KEY, {})
+        raw = self.request.session.get(SESSION_KEY, {})
+        if not isinstance(raw, dict):
+            return {}
+        clean = {}
+        for key, qty in raw.items():
+            if (
+                isinstance(key, str) and key.isascii() and key.isdigit()
+                and isinstance(qty, int) and not isinstance(qty, bool) and qty >= 1
+            ):
+                clean[key] = min(qty, MAX_QUANTITY)
+        return clean
 
     def _save(self, data):
         self.request.session[SESSION_KEY] = data
