@@ -34,6 +34,12 @@ class Product(models.Model):
             models.Index(fields=['name'], name='idx_products_name'),
             models.Index(fields=['is_active'], name='idx_products_active', condition=models.Q(is_active=True)),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(stock_quantity__gte=0),
+                name='product_stock_nonnegative',
+            ),
+        ]
 
     def __str__(self):
         return self.name
