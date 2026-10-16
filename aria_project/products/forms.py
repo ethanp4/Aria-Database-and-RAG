@@ -121,6 +121,9 @@ class ProductForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
 
+    # stock shown when the edit page was rendered; a mismatch means a sale happened since
+    original_stock = forms.IntegerField(widget=forms.HiddenInput)
+
     class Meta:
         model = Product
         fields = (
@@ -167,6 +170,9 @@ class ProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance._state.adding:
             self.fields.pop('inventory_reason')
+            self.fields.pop('original_stock')
+        else:
+            self.fields['original_stock'].initial = self.instance.stock_quantity
         # Query the number of products in that category for displaying in the dropdown
         self.fields['category'].queryset = Category.objects.annotate(
             product_count=Count('product'),
@@ -181,10 +187,21 @@ class ProductForm(forms.ModelForm):
                 ],
             ]
 
+    # on edit, self.instance must be the row locked by the view (select_for_update)
     def clean(self):
         cleaned_data = super().clean()
         stock_quantity = cleaned_data.get('stock_quantity')
         current_quantity = self.instance.stock_quantity
+        original_stock = cleaned_data.get('original_stock')
+        if original_stock is not None and original_stock != current_quantity:
+            # show the current stock so the next save starts from it
+            self.data = self.data.copy()
+            self.data[self.add_prefix('stock_quantity')] = current_quantity
+            self.data[self.add_prefix('original_stock')] = current_quantity
+            raise forms.ValidationError(
+                f'Stock changed since you opened this page (now {current_quantity}). '
+                'Review and save again.'
+            )
         if (
             not self.instance._state.adding
             and stock_quantity is not None

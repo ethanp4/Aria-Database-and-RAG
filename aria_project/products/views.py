@@ -127,26 +127,32 @@ def product_create_view(request):
     })
 
 
+# the row is locked while the form is checked and saved, so a checkout can't commit in
+# between; a form opened before a sale (stale original_stock) is rejected, not saved
 @role_required(ROLE_ADMIN)
 def product_edit_view(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
     if request.method == 'POST':
-        current_stock_quantity = product.stock_quantity
-        form = ProductForm(request.POST, instance=product)
-        if form.is_valid():
-            updated_product = form.save(commit=False)
-            change_qty = updated_product.stock_quantity - current_stock_quantity
-            with transaction.atomic():
-                updated_product.save()
+        with transaction.atomic():
+            product = Product.objects.select_for_update().get(pk=product.pk)
+            locked_stock = product.stock_quantity
+            form = ProductForm(request.POST, instance=product)
+            if form.is_valid():
+                change_qty = form.cleaned_data['stock_quantity'] - locked_stock
+                product = form.save(commit=False)
+                update_fields = [f for f in ProductForm.Meta.fields
+                                 if f != 'stock_quantity' or change_qty]
+                product.save(update_fields=[*update_fields, 'updated_at'])
                 if change_qty:
                     InventoryMovement.objects.create(
-                        product=updated_product,
+                        product=product,
                         change_qty=change_qty,
                         reason=form.cleaned_data['inventory_reason'],
                     )
-            product = updated_product
-            messages.success(request, f'{product.name} was updated.')
-            return redirect('products:dashboard')
+                messages.success(request, f'{product.name} was updated.')
+                return redirect('products:dashboard')
+            # failed validation may have copied posted values onto the instance
+            product.refresh_from_db()
     else:
         initial = {}
         category_id = request.GET.get('category')
