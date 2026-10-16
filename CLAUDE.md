@@ -39,6 +39,8 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   `@role_required(ROLE_STAFF, ROLE_ADMIN)`; get the user with `current_account(request)`.
   Not logged in → login redirect; wrong role → 403; another customer's object → 404
   (filter the lookup by `account=current_account(request)`).
+- Public storefront views (product detail, cart, checkout) use `@customer_or_guest`:
+  guests and customers pass, staff/admin get 403.
 - `/admin/` is the stock Django admin and uses a separate user system; don't rely on it
   for app roles.
 
@@ -58,13 +60,14 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   migrations only. Never edit the DB by hand.
 - `schema.sql`, `sample-data.sql`, `drop-and-recreate-db.ps1` (repo root) are Phase 1
   design artifacts. `schema.sql` does not run as-is and does not match the models; use it
-  only as a reference when adding models for orders, payments, refunds, etc.
+  only as a reference when adding models for refunds and the other still-planned tables.
 - Implemented tables: `accounts`, `profiles`, `addresses`, `categories`, `products`,
   `inventory_movements`, `carriers`, `orders`, `order_items`, `payments`.
 - Planned (designed in `schema.sql`, no models yet): `refunds`, `accounts_receivable`, `accounts_payable`,
   `policy_documents`.
 - Stock changes must write an `InventoryMovement` in the same transaction
-  (see `products/views.py` `product_edit_view`).
+  (see `products/views.py` `product_edit_view`, which locks the row and rejects stale
+  edits, and `orders/services.py` `place_order`).
 
 ## Roles and permissions (enforce SERVER-SIDE in every view, never only in the UI)
 - Customer (`account_type='user'`): order, request refunds, see ONLY their own history.
