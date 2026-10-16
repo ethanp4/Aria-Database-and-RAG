@@ -15,6 +15,9 @@ from products.models import Product
 CHECKOUT = reverse('cart:checkout')
 TOKEN_RE = re.compile(r'name="checkout_token" value="([0-9a-f-]{36})"')
 DECLINED = 'Your payment didn&#x27;t go through. You have not been charged.'
+PAYMENT_FAILED = ('We couldn&#x27;t confirm your payment. If you see a charge, it will be '
+                  'reversed — contact us if it isn&#x27;t.')
+PROCESSING = 'Your order is being processed. Refresh this page in a moment.'
 
 # one 50.00 item, Standard 12.00, ON HST 13% on goods + shipping: 62.00 + 8.06
 TOTAL = '70.06'
@@ -207,6 +210,7 @@ class CheckoutTests(TestCase):
         r = self.client.post(CHECKOUT, guest_data(token, test_card='visa_decline'))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, DECLINED)
+        self.assertNotContains(r, PAYMENT_FAILED)
         self.assertNotEqual(self.token_from(r), token)
         self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 1})
         self.assertFalse(Order.objects.filter(status=Order.Status.CONFIRMED).exists())
@@ -215,7 +219,10 @@ class CheckoutTests(TestCase):
     def test_capture_timeout_rerenders_with_message(self):
         self.add_to_cart()
         r = self.client.post(CHECKOUT, guest_data(str(uuid.uuid4()), test_card='visa_timeout'))
-        self.assertContains(r, DECLINED)
+        # a capture timeout may have moved money once a real gateway is used
+        self.assertContains(r, PAYMENT_FAILED)
+        self.assertNotContains(r, DECLINED)
+        self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 1})
         self.mask.refresh_from_db()
         self.assertEqual(self.mask.stock_quantity, 5)
 
@@ -321,6 +328,52 @@ class CheckoutTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.mask.refresh_from_db()
         self.assertEqual(self.mask.stock_quantity, 4)
+
+    # back button to an old, already-confirmed checkout page must not wipe a new cart
+    def test_replayed_confirmed_token_keeps_new_cart(self):
+        for who in ('customer', 'guest'):
+            with self.subTest(who):
+                if who == 'customer':
+                    login(self.client, self.alice)
+                    data = customer_data(str(uuid.uuid4()), self.alice_ship)
+                else:
+                    self.client.logout()
+                    data = guest_data(str(uuid.uuid4()))
+                orders_before = Order.objects.count()
+                mail.outbox = []
+                self.add_to_cart()
+                self.client.post(CHECKOUT, data)
+                self.assertFalse(self.client.session.get('cart'))
+                self.add_to_cart(2)
+                r = self.client.post(CHECKOUT, data)
+                order = Order.objects.get(checkout_token=data['checkout_token'])
+                self.assertEqual(r.status_code, 302)
+                self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 2})
+                self.assertEqual(Order.objects.count(), orders_before + 1)
+                self.assertEqual(len(mail.outbox), 1)
+                self.assertEqual(order.status, Order.Status.CONFIRMED)
+
+    # a concurrent double submit can return an order the other request is still placing
+    def test_replay_of_order_still_pending_shows_processing_message(self):
+        for who in ('customer', 'guest'):
+            with self.subTest(who):
+                if who == 'customer':
+                    login(self.client, self.alice)
+                    data = customer_data(str(uuid.uuid4()), self.alice_ship)
+                else:
+                    self.client.logout()
+                    data = guest_data(str(uuid.uuid4()))
+                self.add_to_cart()
+                self.client.post(CHECKOUT, data, follow=True)  # consumes the confirmed flash
+                order = Order.objects.get(checkout_token=data['checkout_token'])
+                Order.objects.filter(pk=order.pk).update(
+                    status=Order.Status.PENDING_PAYMENT, confirmed_payment=None)
+                self.add_to_cart()
+                r = self.client.post(CHECKOUT, data, follow=True)
+                self.assertEqual(r.status_code, 200)
+                self.assertContains(r, PROCESSING)
+                self.assertNotContains(r, f'Order #{order.pk} confirmed.')
+                self.assertEqual(self.client.session['cart'], {str(self.mask.pk): 1})
 
     def test_other_owners_token_is_404(self):
         login(self.client, self.alice)

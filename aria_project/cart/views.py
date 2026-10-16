@@ -60,6 +60,10 @@ def cart_update_view(request, product_id):
 
 
 MSG_DECLINED = "Your payment didn't go through. You have not been charged."
+# timeout / unknown gateway outcome: money may have moved, so don't promise "not charged"
+MSG_PAYMENT_FAILED = ("We couldn't confirm your payment. If you see a charge, it will be "
+                      "reversed — contact us if it isn't.")
+MSG_PROCESSING = 'Your order is being processed. Refresh this page in a moment.'
 MSG_TOTALS_CHANGED = 'Prices or totals changed. Please review and submit again.'
 MSG_REVIEW_TOTAL = 'Please review your total and submit again.'
 
@@ -153,14 +157,17 @@ def _order_url(account, order):
     return guest_order_url(order)
 
 
-# only a confirmed order empties the cart; only the request that confirmed it sends the email
+# only the request that confirmed the order empties the cart and sends the email;
+# a replayed old token (back button) must not wipe a cart built since
 def _finish(request, account, cart, order):
     url = _order_url(account, order)
     if order.status == Order.Status.CONFIRMED:
-        cart.clear()
         if getattr(order, 'was_created', False):
+            cart.clear()
             send_order_confirmation(order, request.build_absolute_uri(url))
         messages.success(request, f'Order #{order.pk} confirmed.')
+    elif order.status == Order.Status.PENDING_PAYMENT:
+        messages.info(request, MSG_PROCESSING)
     return redirect(url)
 
 
@@ -240,8 +247,10 @@ def _checkout_post(request, account):
             method_type=card.method_type, card_brand=card.brand,
             checkout_token=form.cleaned_data['checkout_token'],
         )
-    except (PaymentDeclined, PaymentFailed):
+    except PaymentDeclined:
         return _rerender(request, account, cart, error=MSG_DECLINED, fresh_token=True)
+    except PaymentFailed:
+        return _rerender(request, account, cart, error=MSG_PAYMENT_FAILED, fresh_token=True)
     except OutOfStock as e:
         names = ', '.join(Product.objects.filter(pk__in=e.product_ids)
                           .order_by('name').values_list('name', flat=True))
