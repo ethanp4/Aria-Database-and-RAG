@@ -15,12 +15,13 @@ from pathlib import Path
 import environ
 from django.contrib.messages import constants as message_constants
 
-#get variables from .env file, must be placed in the same directory as this file
-env = environ.Env()
-environ.Env.read_env()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+#get variables from the .env file in the repo root (one level above aria_project)
+#variables already set in the environment (e.g. by docker compose) take priority
+env = environ.Env()
+environ.Env.read_env(BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -105,7 +106,7 @@ DATABASES = {
         'USER': env('DB_USER'),
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT', default='5432'),
+        'PORT': env('DB_PORT', default='5433'),
     }
 }
 

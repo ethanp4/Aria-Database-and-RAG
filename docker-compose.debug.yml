@@ -1,0 +1,18 @@
+# Debug overrides for the django service, used by the "Django: Docker" VS Code launch config.
+# Run manually with:
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up --build django
+services:
+  django:
+    build:
+      args:
+        DEBUG_TOOLS: "true"
+    # separate image so the normal "django" image stays debugger-free
+    image: django-debug
+    # VS Code attaches to the debugger on 5678
+    ports:
+      - 5678:5678
+    # use the live source so breakpoints match and edits apply on restart (no rebuild needed)
+    volumes:
+      - ./aria_project:/app
+    # --noreload so the debugger stays attached to the process actually serving requests
+    command: ["sh", "-c", "python -m debugpy --listen 0.0.0.0:5678 manage.py runserver 0.0.0.0:8000 --noreload"]
