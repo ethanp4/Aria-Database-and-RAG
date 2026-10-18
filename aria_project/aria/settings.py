@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'accounts',
     'cart',
     'core',
+    'orders',
+    'payments',
     'products'
 ]
 
@@ -85,6 +87,7 @@ TEMPLATES = [
                 #automatically load the profile info on all pages
                 "accounts.context_preprocessors.current_profile",
                 "accounts.context_preprocessors.account_info",
+                "cart.context_processors.cart_info",
             ],
         },
     },
@@ -153,3 +156,8 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+DEFAULT_FROM_EMAIL = 'orders@aria.example'
+
+# Payments (TEMPORARY fake gateway until Stripe; see docs/follow-ups.md)
+ARIA_PAYMENT_GATEWAY = env('ARIA_PAYMENT_GATEWAY', default='payments.gateway.FakeGateway')

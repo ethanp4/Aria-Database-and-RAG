@@ -1,6 +1,7 @@
 from django import forms
 
 from .models import Account, Address, Profile
+from .regions import normalize_region
 
 
 class RegisterForm(forms.Form):
@@ -74,3 +75,16 @@ class AddressForm(forms.ModelForm):
             'country': forms.Select(attrs={'class': 'form-select'}),
             'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+        help_texts = {'region': '2-letter code, e.g. ON or WA.'}
+
+    # region must be a valid 2-letter code for the chosen country
+    def clean(self):
+        cleaned = super().clean()
+        country = cleaned.get('country')
+        region = cleaned.get('region')
+        if country and region:
+            try:
+                cleaned['region'] = normalize_region(country, region)
+            except forms.ValidationError as e:
+                self.add_error('region', e)
+        return cleaned
