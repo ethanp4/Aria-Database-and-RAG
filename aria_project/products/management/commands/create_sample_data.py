@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 from django.contrib.auth.hashers import make_password
@@ -103,8 +104,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--password',
-            default='aaaa',
-            help='Password assigned to newly created sample accounts (development only).',
+            default=os.environ.get('SAMPLE_ACCOUNT_PASSWORD', '1234'),
+            help=(
+                'Password assigned to newly created sample accounts (development only). '
+                'Defaults to SAMPLE_ACCOUNT_PASSWORD from the .env file.'
+            ),
         )
 
     @transaction.atomic
@@ -183,6 +187,7 @@ class Command(BaseCommand):
             f'{created_categories} categories, {created_products} products created.'
         ))
         self.stdout.write(
-            'New sample accounts use the password provided with --password '
-            '(default: aaaa). These credentials are for development only.'
+            'New sample accounts use the password from --password, or '
+            'SAMPLE_ACCOUNT_PASSWORD in .env (default: aaaa). '
+            'These credentials are for development only.'
         )
