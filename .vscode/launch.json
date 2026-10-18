@@ -12,6 +12,19 @@
       "args": ["runserver", "--noreload"],
       "cwd": "${workspaceFolder}/aria_project",
       "django": true
+    },
+    {
+      // starts the django container with debugpy (docker-compose.debug.yml) and attaches to it
+      "name": "Django: Docker",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}/aria_project", "remoteRoot": "/app" }
+      ],
+      "django": true,
+      "preLaunchTask": "docker: start django debug",
+      "postDebugTask": "docker: stop django debug"
     }
   ]
 }
