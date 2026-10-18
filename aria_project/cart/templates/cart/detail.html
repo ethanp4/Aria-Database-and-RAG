@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <h1 class="h2 mb-4">Your cart</h1>
+
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+
+    {% if lines %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col" class="text-end">Price</th>
+                        <th scope="col" style="width: 14rem;">Quantity</th>
+                        <th scope="col" class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>
+                            <a class="text-decoration-none" href="{% url 'products:detail' line.product.product_id %}">{{ line.product.name }}</a>
+                            {% if line.quantity > line.product.stock_quantity %}
+                            <div class="small text-danger">Only {{ line.product.stock_quantity }} left</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ line.product.unit_price }}</td>
+                        <td>
+                            <form method="post" action="{% url 'cart:update' line.product.product_id %}" class="d-flex gap-2">
+                                {% csrf_token %}
+                                <input class="form-control" type="number" name="quantity" value="{{ line.quantity }}" min="0" max="99" aria-label="Quantity for {{ line.product.name }}">
+                                <button class="btn btn-outline-secondary" type="submit">Update</button>
+                            </form>
+                        </td>
+                        <td class="text-end">{{ line.line_total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="3" class="text-end">Subtotal</th>
+                        <td class="text-end fw-semibold">{{ subtotal }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% if has_stock_problem %}
+    <p class="text-danger mt-3">Some items are over the available stock. Please lower the quantity.</p>
+    {% endif %}
+    <div class="text-end mt-3">
+        <a class="btn btn-primary" href="{% url 'cart:checkout' %}">Checkout</a>
+    </div>
+    {% else %}
+    <div class="card border-0 bg-body-tertiary">
+        <div class="card-body py-5 text-center">
+            <h2 class="h5">Your cart is empty</h2>
+            <a class="btn btn-primary mt-2" href="{% url 'products:browse' %}">Browse products</a>
+        </div>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

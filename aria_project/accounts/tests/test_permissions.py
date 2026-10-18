@@ -11,6 +11,7 @@ from accounts.permissions import (
     ROLE_CUSTOMER,
     ROLE_STAFF,
     current_account,
+    customer_or_guest,
     login_required,
     role_required,
 )
@@ -98,3 +99,23 @@ class PermissionTests(TestCase):
 
         with self.assertRaises(IntegrityError), transaction.atomic():
             make_account('root', 'superuser')
+
+
+@customer_or_guest
+def shop_view(request):
+    return HttpResponse('ok')
+
+
+class CustomerOrGuestTests(TestCase):
+    def get(self, account=None):
+        request = RequestFactory().get('/shop/')
+        request.session = SessionStore()
+        if account is not None:
+            request.session['account_id'] = account.account_id
+        return shop_view(request)
+
+    def test_customer_or_guest_allows_anonymous_and_customer_forbids_staff_and_admin(self):
+        self.assertEqual(self.get().status_code, 200)
+        self.assertEqual(self.get(make_account('cust')).status_code, 200)
+        self.assertEqual(self.get(make_account('stf', ROLE_STAFF)).status_code, 403)
+        self.assertEqual(self.get(make_account('adm', ROLE_ADMIN)).status_code, 403)

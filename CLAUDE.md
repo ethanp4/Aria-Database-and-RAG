@@ -22,7 +22,13 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
 - `products/`: Category, Product, InventoryMovement; browse page, admin dashboard,
   product/category create+edit; `sample_data` management command
 - `core/`: home page
-- `cart/`: empty; will hold cart and checkout
+- `cart/`: session cart (`cart.py`), cart views, cart-count context processor
+- `orders/`: Order, OrderItem, Carrier models; `services.py` (`place_order`, `mark_shipped`),
+  `pricing.py` (`quote()`, placeholder tax table), checkout, customer order history, guest order
+  link (`links.py`) and lookup, confirmation email (`emails.py`), staff order list/detail/mark shipped
+- `payments/`: Payment model, `gateway.py` (`PaymentGateway` protocol + `FakeGateway`),
+  `masking.py`, `test_cards.py`
+- Payments and tax are TEMPORARY (FakeGateway, placeholder tax table); see docs/follow-ups.md
 
 ## Auth (custom, not django.contrib.auth)
 - Login checks `Account.password_hash` (Django hashers) and stores `account_id` and
@@ -33,6 +39,8 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   `@role_required(ROLE_STAFF, ROLE_ADMIN)`; get the user with `current_account(request)`.
   Not logged in → login redirect; wrong role → 403; another customer's object → 404
   (filter the lookup by `account=current_account(request)`).
+- Public storefront views (product detail, cart, checkout) use `@customer_or_guest`:
+  guests and customers pass, staff/admin get 403.
 - `/admin/` is the stock Django admin and uses a separate user system; don't rely on it
   for app roles.
 
@@ -52,14 +60,14 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   migrations only. Never edit the DB by hand.
 - `schema.sql`, `sample-data.sql`, `drop-and-recreate-db.ps1` (repo root) are Phase 1
   design artifacts. `schema.sql` does not run as-is and does not match the models; use it
-  only as a reference when adding models for orders, payments, refunds, etc.
+  only as a reference when adding models for refunds and the other still-planned tables.
 - Implemented tables: `accounts`, `profiles`, `addresses`, `categories`, `products`,
-  `inventory_movements`.
-- Planned (designed in `schema.sql`, no models yet): `carriers`, `orders`,
-  `order_items`, `payments`, `refunds`, `accounts_receivable`, `accounts_payable`,
+  `inventory_movements`, `carriers`, `orders`, `order_items`, `payments`.
+- Planned (designed in `schema.sql`, no models yet): `refunds`, `accounts_receivable`, `accounts_payable`,
   `policy_documents`.
 - Stock changes must write an `InventoryMovement` in the same transaction
-  (see `products/views.py` `product_edit_view`).
+  (see `products/views.py` `product_edit_view`, which locks the row and rejects stale
+  edits, and `orders/services.py` `place_order`).
 
 ## Roles and permissions (enforce SERVER-SIDE in every view, never only in the UI)
 - Customer (`account_type='user'`): order, request refunds, see ONLY their own history.
@@ -68,6 +76,8 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   Payment details are masked. Cannot edit products or see analytics.
 - Admin (`account_type='admin'`): analytics, edit products, oversee refunds
   (incl. duplicate-refund flags).
+- Guest (not logged in): browse, cart, checkout, and view their own order via the private
+  order link or email+order-number lookup. No account pages.
 - Shipper: does not sign in, no screen. Do not build one.
 
 ## Critical invariants (do not break; add tests when touching these)
