@@ -23,6 +23,9 @@ Core will contain pages like the home page and about page.
 
 ## Docker
 
+1. Install Docker Desktop:
+   `https://www.docker.com/products/docker-desktop/`
+
 ### Setup
 
 1. Start db in background (separate postgres instance from your local one running on port 5433):
@@ -49,9 +52,15 @@ Core will contain pages like the home page and about page.
    `127.0.0.1:8000`
 
 ### Running
+1. Make sure db is running (might already be running)
 
-1. Install Docker Desktop:
-   `https://www.docker.com/products/docker-desktop/`
+`docker compose up db -d`
+
+2. Run backend
+`docker compose up --build django`
+
+3. If it mentions something about migrations or there is some error after an update
+`docker exec django python manage.py migrate`
 
 ### Stopping
 `docker compose down`
