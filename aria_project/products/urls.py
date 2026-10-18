@@ -18,4 +18,5 @@ urlpatterns = [
         name='product_edit',
     ),
     path('browse/', views.browse_view, name='browse'),
+    path('products/<int:product_id>/', views.product_detail_view, name='detail'),
 ]

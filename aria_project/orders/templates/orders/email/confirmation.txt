@@ -1,0 +1,17 @@
+{% autoescape off %}Thank you for your order!
+
+Order number: {{ order.order_id }}
+
+Items:
+{% for item in items %}- {{ item.product.name }} x {{ item.quantity }} @ {{ item.unit_price }} = {{ item.line_total }}
+{% endfor %}
+Subtotal: {{ order.subtotal }}
+Shipping ({{ shipping_label }}): {{ order.shipping_cost }}
+Tax: {{ order.tax_amount }}
+Total: {{ order.total_amount }}
+
+Shipping method: {{ shipping_label }}
+{% if payment_display %}Payment: {{ payment_display }}
+{% endif %}
+View your order any time: {{ order_url }}
+{% endautoescape %}

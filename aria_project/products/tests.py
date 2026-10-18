@@ -1,8 +1,10 @@
+from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 from django.urls import reverse
 from django.core.management import call_command
 
 from accounts.models import Account
+from orders.models import Carrier
 from .models import Category, InventoryMovement, Product
 
 
@@ -171,6 +173,36 @@ class SampleDataCommandTests(TestCase):
         self.assertEqual(Product.objects.count(), 200)
 
 
+class SampleDataCarrierTests(TestCase):
+    def test_sample_data_creates_carriers_idempotently(self):
+        call_command('sample_data', verbosity=0)
+        names = {'Canada Post', 'Purolator', 'UPS', 'FedEx'}
+        self.assertEqual(set(Carrier.objects.values_list('name', flat=True)), names)
+        for carrier in Carrier.objects.all():
+            self.assertIn('{tracking_number}', carrier.tracking_url_template)
+        call_command('sample_data', verbosity=0)
+        self.assertEqual(Carrier.objects.count(), 4)
+
+
+# records every SQL statement run on the default connection (the test client's
+# request_started signal clears connection.queries, so CaptureQueriesContext sees nothing)
+class RecordSQL:
+    def __init__(self):
+        self.statements = []
+
+    def __call__(self, execute, sql, params, many, context):
+        self.statements.append(sql)
+        return execute(sql, params, many, context)
+
+    def __enter__(self):
+        self._wrapper = connection.execute_wrapper(self)
+        self._wrapper.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        return self._wrapper.__exit__(*exc)
+
+
 class ProductManagementTests(TestCase):
     def setUp(self):
         account = Account.objects.create(
@@ -219,6 +251,7 @@ class ProductManagementTests(TestCase):
                 name='Updated mug',
                 sku='MUG-02',
                 stock_quantity='8',
+                original_stock='0',
                 inventory_reason='RESTOCK',
             ),
         )
@@ -238,7 +271,8 @@ class ProductManagementTests(TestCase):
 
         response = self.client.post(
             reverse('products:product_edit', args=[product.product_id]),
-            self.product_data(stock_quantity='13', inventory_reason='RESTOCK'),
+            self.product_data(stock_quantity='13', original_stock='8',
+                              inventory_reason='RESTOCK'),
         )
 
         self.assertRedirects(response, reverse('products:dashboard'))
@@ -258,7 +292,7 @@ class ProductManagementTests(TestCase):
 
         response = self.client.post(
             reverse('products:product_edit', args=[product.product_id]),
-            self.product_data(stock_quantity='13'),
+            self.product_data(stock_quantity='13', original_stock='8'),
         )
 
         self.assertEqual(response.status_code, 200)
@@ -276,11 +310,104 @@ class ProductManagementTests(TestCase):
 
         response = self.client.post(
             reverse('products:product_edit', args=[product.product_id]),
-            self.product_data(name='Updated mug'),
+            self.product_data(name='Updated mug', original_stock='8'),
         )
 
         self.assertRedirects(response, reverse('products:dashboard'))
         self.assertFalse(InventoryMovement.objects.exists())
+
+    def make_mug(self, stock=8):
+        return Product.objects.create(
+            sku='MUG-01', name='Ceramic mug', unit_price='12.50', stock_quantity=stock)
+
+    def test_edit_page_carries_stock_seen_when_rendered(self):
+        product = self.make_mug(stock=8)
+
+        response = self.client.get(
+            reverse('products:product_edit', args=[product.product_id]))
+
+        self.assertEqual(response.context['form']['original_stock'].value(), 8)
+        self.assertContains(response, 'name="original_stock"')
+
+    # admin opened the page at 10, then checkout sold 2: the stale form must not restore them
+    def test_stale_original_stock_is_rejected_without_changes(self):
+        product = self.make_mug(stock=8)
+
+        response = self.client.post(
+            reverse('products:product_edit', args=[product.product_id]),
+            self.product_data(name='Renamed', stock_quantity='15', original_stock='10',
+                              inventory_reason='RESTOCK'),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, 'Stock changed since you opened this page (now 8). Review and save again.')
+        form = response.context['form']
+        self.assertEqual(str(form['stock_quantity'].value()), '8')
+        self.assertEqual(str(form['original_stock'].value()), '8')
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 8)
+        self.assertEqual(product.name, 'Ceramic mug')
+        self.assertFalse(InventoryMovement.objects.exists())
+
+    def test_edit_without_original_stock_is_rejected(self):
+        product = self.make_mug(stock=8)
+
+        response = self.client.post(
+            reverse('products:product_edit', args=[product.product_id]),
+            self.product_data(stock_quantity='15', inventory_reason='RESTOCK'),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 8)
+        self.assertFalse(InventoryMovement.objects.exists())
+
+    def test_edit_locks_the_product_row_and_writes_movement(self):
+        product = self.make_mug(stock=8)
+
+        with RecordSQL() as queries:
+            response = self.client.post(
+                reverse('products:product_edit', args=[product.product_id]),
+                self.product_data(stock_quantity='5', original_stock='8',
+                                  inventory_reason='ADJUSTMENT'),
+            )
+
+        self.assertRedirects(response, reverse('products:dashboard'))
+        self.assertTrue(any('FOR UPDATE' in sql and '"products"' in sql
+                            for sql in queries.statements))
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 5)
+        movement = InventoryMovement.objects.get(product=product)
+        self.assertEqual(movement.change_qty, -3)
+        self.assertEqual(movement.reason, InventoryMovement.Reason.ADJUSTMENT)
+
+    def test_price_only_edit_leaves_stock_alone(self):
+        product = self.make_mug(stock=8)
+
+        with RecordSQL() as queries:
+            response = self.client.post(
+                reverse('products:product_edit', args=[product.product_id]),
+                self.product_data(unit_price='14.00', original_stock='8'),
+            )
+
+        self.assertRedirects(response, reverse('products:dashboard'))
+        updates = [sql for sql in queries.statements
+                   if sql.startswith('UPDATE "products"')]
+        self.assertEqual(len(updates), 1)
+        self.assertNotIn('"stock_quantity"', updates[0])
+        product.refresh_from_db()
+        self.assertEqual(str(product.unit_price), '14.00')
+        self.assertEqual(product.stock_quantity, 8)
+        self.assertFalse(InventoryMovement.objects.exists())
+
+
+class ProductStockConstraintTests(TestCase):
+    def test_negative_stock_is_rejected_by_the_database(self):
+        product = Product.objects.create(sku='MUG-01', name='Ceramic mug', unit_price='12.50')
+        product.stock_quantity = -1
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            product.save()
 
 
 class ProductPermissionTests(TestCase):

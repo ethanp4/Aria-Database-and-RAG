@@ -196,7 +196,7 @@ Roles map to `Account.account_type`: `'user'` = Customer, `'staff'` = Staff, `'a
 
 **Interfaces (Produces):**
 - `refunds.services.request_refund(account: Account, order_id: int, amount: Decimal, reason: str, idempotency_key: UUID) -> Refund`
-  - Order must belong to the account (else `Order.DoesNotExist` → 404) and be `CONFIRMED`/`SHIPPED`/`DELIVERED`. The total of completed refunds plus this amount must be ≤ `order.total_amount`.
+  - Order must belong to the account, or the caller is a guest authorized by the order's private link (else `Order.DoesNotExist` → 404) and be `CONFIRMED`/`SHIPPED`/`DELIVERED`. The total of completed refunds plus this amount must be ≤ `order.total_amount`.
   - A repeated `idempotency_key` returns the existing Refund **and** records a `DuplicateRefundAttempt(SAME_KEY)`.
   - An `IntegrityError` on `one_open_refund_per_order` raises `DuplicateRefund` and records `DuplicateRefundAttempt(OPEN_REFUND_EXISTS)`. Write the attempt in a separate transaction so the rollback doesn't discard the flag.
 - `refunds.services.approve_refund(staff: Account, refund_id: int) -> Refund`: `select_for_update`; only `REQUESTED → APPROVED → COMPLETED` (calls `gateway` refund via `PaymentGateway.refund(ref, amount)`, added in this phase). A second call records `APPROVE_TWICE` and returns without paying out again. Marks the order `REFUNDED` when it is fully refunded and writes `InventoryMovement(REFUND)` if goods are returned.
@@ -291,6 +291,7 @@ Roles map to `Account.account_type`: `'user'` = Customer, `'staff'` = Staff, `'a
 - `core/management/commands/apply_retention.py` (run daily via cron or an Azure scheduled job):
   - Anonymize `ChatMessage.text` and null `ChatSession.account` after 90 days.
   - Anonymize `Profile`/`Address` PII for accounts inactive > 2 years. Orders keep `account` FK and amounts.
+  - Cover order contact/address copies (email, phone, shipping/billing fields on `Order`) and guest orders (no account FK): anonymize on the same schedule.
   - Never delete `Order`/`Payment` rows younger than 7 years.
   - Tests use frozen dates at each boundary (89/90/91 days, etc.).
 - `sample_data --orders N`: Faker-generated customers, addresses, orders, payments (token `tok_fake_*`, Faker last4), refunds. Used to `EXPLAIN ANALYZE` every list view at 1M orders; add missing indexes via migration.
