@@ -34,6 +34,12 @@ class Product(models.Model):
             models.Index(fields=['name'], name='idx_products_name'),
             models.Index(fields=['is_active'], name='idx_products_active', condition=models.Q(is_active=True)),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(stock_quantity__gte=0),
+                name='product_stock_nonnegative',
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -54,6 +60,13 @@ class InventoryMovement(models.Model):
     )
     change_qty = models.IntegerField()
     reason = models.CharField(max_length=20, choices=Reason.choices)
+    reference_order = models.ForeignKey(
+        'orders.Order',
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name='inventory_movements',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

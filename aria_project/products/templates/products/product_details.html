@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    <nav aria-label="Breadcrumb" class="mb-3">
+        <a class="text-decoration-none" href="{% url 'products:browse' %}">&larr; Back to products</a>
+    </nav>
+
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+
+    <article class="card border-0 shadow-sm">
+        <div class="card-body">
+            {% if product.category %}
+            <p class="small text-body-secondary mb-2">{{ product.category.name }}</p>
+            {% endif %}
+            <h1 class="h2">{{ product.name }}</h1>
+            {% if product.description %}
+            <p class="text-body-secondary">{{ product.description }}</p>
+            {% endif %}
+            <p class="fs-4 fw-semibold mb-2">{{ product.currency }} {{ product.unit_price }}</p>
+
+            {% if product.stock_quantity > 0 %}
+            <p class="small text-success">In stock</p>
+            {% else %}
+            <p class="small text-body-secondary">Out of stock</p>
+            {% endif %}
+
+            {% if can_shop and product.stock_quantity > 0 %}
+            <form method="post" action="{% url 'cart:add' product.product_id %}" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-auto">
+                    <label class="form-label" for="{{ add_form.quantity.id_for_label }}">Quantity</label>
+                    {{ add_form.quantity }}
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-primary" type="submit">Add to cart</button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </article>
+</main>
+{% endblock %}

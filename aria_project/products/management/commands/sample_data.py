@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import Account, Profile
+from orders.models import Carrier
 from products.models import Category, Product
 
 
@@ -83,6 +84,8 @@ PRODUCT_VARIANTS = (
     ('Deluxe', 'Enhanced materials and comfort-focused details.'),
 )
 
+CARRIERS = ('Canada Post', 'Purolator', 'UPS', 'FedEx')
+
 SAMPLE_ACCOUNTS = (
     ('reef_ranger', 'Avery', 'Morgan', 'avery.morgan@example.test', '555-0101'),
     ('coral_current', 'Jordan', 'Lee', 'jordan.lee@example.test', '555-0102'),
@@ -132,6 +135,12 @@ class Command(BaseCommand):
                 },
             )
             created_profiles += profile_created
+
+        for carrier_name in CARRIERS:
+            Carrier.objects.get_or_create(
+                name=carrier_name,
+                defaults={'tracking_url_template': 'https://example.com/track/{tracking_number}'},
+            )
 
         categories = {}
         created_categories = 0
