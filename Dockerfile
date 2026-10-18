@@ -21,6 +21,10 @@ COPY requirements.txt  /app/
  
 # run this command to install all dependencies 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# debugger for VS Code, only installed by docker-compose.debug.yml (DEBUG_TOOLS=true)
+ARG DEBUG_TOOLS=false
+RUN if [ "$DEBUG_TOOLS" = "true" ]; then pip install --no-cache-dir debugpy==1.8.20; fi
  
 # Copy the Django project to the container
 # COPY ./aria /app/aria
@@ -29,4 +33,4 @@ COPY ./aria_project/ /app/
 
 EXPOSE 8000
  
-CMD ["sh", "-c", "python manage.py migrate && python -u manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python -u manage.py runserver 0.0.0.0:8000"]
