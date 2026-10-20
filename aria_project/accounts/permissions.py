@@ -11,6 +11,7 @@ __all__ = [
     'ROLE_CUSTOMER',
     'ROLE_STAFF',
     'current_account',
+    'customer_or_guest',
     'login_required',
     'role_required',
 ]
@@ -55,3 +56,15 @@ def role_required(*roles):
             return view(request, *args, **kwargs)
         return wrapper
     return decorator
+
+
+
+# storefront views: guests and customers pass, staff and admin get 403
+def customer_or_guest(view):
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        account = current_account(request)
+        if account is not None and account.account_type != ROLE_CUSTOMER:
+            return HttpResponseForbidden('You do not have permission to access this page.')
+        return view(request, *args, **kwargs)
+    return wrapper

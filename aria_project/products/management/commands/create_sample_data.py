@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 from django.contrib.auth.hashers import make_password
@@ -5,6 +6,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import Account, Profile
+from orders.models import Carrier
 from products.models import Category, Product
 
 
@@ -83,6 +85,8 @@ PRODUCT_VARIANTS = (
     ('Deluxe', 'Enhanced materials and comfort-focused details.'),
 )
 
+CARRIERS = ('Canada Post', 'Purolator', 'UPS', 'FedEx')
+
 SAMPLE_ACCOUNTS = (
     ('reef_ranger', 'Avery', 'Morgan', 'avery.morgan@example.test', '555-0101'),
     ('coral_current', 'Jordan', 'Lee', 'jordan.lee@example.test', '555-0102'),
@@ -103,8 +107,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--password',
-            default='aaaa',
-            help='Password assigned to newly created sample accounts (development only).',
+            default=os.environ.get('SAMPLE_ACCOUNT_PASSWORD', '1234'),
+            help=(
+                'Password assigned to newly created sample accounts (development only). '
+                'Defaults to SAMPLE_ACCOUNT_PASSWORD from the .env file.'
+            ),
         )
 
     @transaction.atomic
@@ -132,6 +139,12 @@ class Command(BaseCommand):
                 },
             )
             created_profiles += profile_created
+
+        for carrier_name in CARRIERS:
+            Carrier.objects.get_or_create(
+                name=carrier_name,
+                defaults={'tracking_url_template': 'https://example.com/track/{tracking_number}'},
+            )
 
         categories = {}
         created_categories = 0
@@ -183,6 +196,7 @@ class Command(BaseCommand):
             f'{created_categories} categories, {created_products} products created.'
         ))
         self.stdout.write(
-            'New sample accounts use the password provided with --password '
-            '(default: aaaa). These credentials are for development only.'
+            'New sample accounts use the password from --password, or '
+            'SAMPLE_ACCOUNT_PASSWORD in .env (default: aaaa). '
+            'These credentials are for development only.'
         )

@@ -9,3 +9,7 @@ advanceddb_project/**/serviceAccount*.json
 .pgpass
 pgpass.conf
 *-debug.log
+
+# 
+pgdata
+venv

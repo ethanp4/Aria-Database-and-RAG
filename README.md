@@ -1,5 +1,91 @@
 # Aria
 
+## Docker
+
+1. Install Docker Desktop:
+   `https://www.docker.com/products/docker-desktop/`
+
+### Setup
+
+1. Start db in background (separate postgres instance from your local one running on port 5433):
+
+   `docker compose up db -d`
+
+2. Start backend
+
+   `docker compose up django --build`
+   
+   or to start in background: `docker compose up django --build -d`
+   
+3. Run the db setup script
+
+   `docker compose exec django bash -c ./first_run.sh`
+   
+   The default admin and staff accounts from `.env` (`DEFAULT_ADMIN_*`, `DEFAULT_STAFF_*`)
+   are created automatically the first time the backend starts.
+
+4. After making a change stop and rebuild the backend
+
+5. Go to:
+
+   `127.0.0.1:8000`
+
+### Running
+1. Make sure db is running (might already be running)
+
+`docker compose up db -d`
+
+2. Run backend
+`docker compose up --build django`
+
+3. If it mentions something about migrations or there is some error after an update
+`docker exec django python manage.py migrate`
+
+### Stopping
+`docker compose down`
+
+Or individually:
+
+`docker compose down db`
+
+`docker compose down django`
+
+## No Docker
+
+### Setup
+
+1. Create virtual environment:
+
+   `python -m venv ./venv`
+
+2. Enter environment:
+
+   `.\venv\Scripts\activate`
+
+3. Install requirements:
+
+   `pip install -r requirements.txt`
+
+4. Copy the `.env.example` file to `.env` in the repo root and fill in the values
+   (database, sample account password, default admin/staff logins)
+
+### Running
+
+1. Apply migrations if needed:
+
+   `cd aria_project`
+
+   `python manage.py migrate`
+
+2. Create the default admin and staff accounts from `.env` (safe to run again, existing accounts are left alone):
+
+   `python manage.py create_default_accounts`
+
+3. Run the project:
+
+   `python manage.py runserver`
+---
+
 ## Project Structure
 
 ### Accounts
@@ -17,55 +103,6 @@ Products will contain the browse products page and product details.
 ### Core
 
 Core will contain pages like the home page and about page.
-
----
-
-## Setup
-
-### No Docker
-
-1. Create virtual environment:
-   `python -m venv ./venv`
-
-2. Enter environment:
-   `.\venv\Scripts\activate`
-
-3. Install requirements:
-   `pip install -r requirements.txt`
-
-4. Copy the `.env.example` file to:
-   `aria_project/aria/.env`
-
-### Docker
-
-1. Install Docker Desktop:
-   `https://www.docker.com/products/docker-desktop/`
-
----
-
-## Running
-
-### No Docker
-
-1. Apply migrations if needed:
-
-   `cd aria_project`
-
-   `python manage.py migrate`
-
-2. Run the project:
-
-   `python manage.py runserver`
-
-### Docker
-
-1. Run:
-
-   `docker compose up --build`
-
-2. Go to:
-
-   `127.0.0.1:8080`
 
 ---
 
