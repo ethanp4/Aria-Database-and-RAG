@@ -8,3 +8,4 @@ advanceddb_project/**/serviceAccount*.json
 *.key.json
 .pgpass
 pgpass.conf
+*-debug.log

@@ -1,0 +1,4 @@
+# Firestore prototype only (kept separate from the Django app's requirements.txt).
+# firebase-admin: official Admin SDK; server-side access with a service account, and it
+# pulls in google-cloud-firestore (queries, aggregations, batched writes).
+firebase-admin==6.5.0
