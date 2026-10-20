@@ -41,7 +41,7 @@ SAVEPOINT before_confirm;
 SAVEPOINT
 UPDATE orders SET status = 'CONFIRMED', confirmed_at = now() WHERE order_id = 900101;
 psql:Q11_checkout_transaction.sql:49: ERROR:  new row for relation "orders" violates check constraint "orders_confirmed_requires_payment"
-DETAIL:  Failing row contains (900101, 2, CONFIRMED, Demo Customer, null, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, EXPRESS, 113.95, 20.00, 18.75, 152.70, 00000000-0000-4000-8000-000000900101, null, null, null, null, 2026-10-20 04:31:01.097613+00, 2026-10-20 04:31:01.097613+00, 2026-10-20 04:31:01.097613+00, null, null).
+DETAIL:  Failing row contains (900101, 2, CONFIRMED, Demo Customer, null, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, EXPRESS, 113.95, 20.00, 18.75, 152.70, 00000000-0000-4000-8000-000000900101, null, null, null, null, 2026-10-20 04:48:17.475458+00, 2026-10-20 04:48:17.475458+00, 2026-10-20 04:48:17.475458+00, null, null).
 ROLLBACK TO SAVEPOINT before_confirm;
 ROLLBACK
 INSERT INTO payments (payment_id, order_id, amount, method_type, token, last4, card_brand, status, gateway_ref)

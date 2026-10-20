@@ -18,20 +18,20 @@ ORDER BY created_at DESC
 LIMIT 10;
                                        QUERY PLAN                                       
 ----------------------------------------------------------------------------------------
- Limit (actual time=57.170..57.172 rows=10.00 loops=1)
+ Limit (actual time=56.613..56.615 rows=10.00 loops=1)
    Buffers: local read=7360 written=1017
-   ->  Sort (actual time=57.168..57.169 rows=10.00 loops=1)
+   ->  Sort (actual time=56.611..56.612 rows=10.00 loops=1)
          Sort Key: created_at DESC
          Sort Method: quicksort  Memory: 26kB
          Buffers: local read=7360 written=1017
-         ->  Seq Scan on orders_at_scale (actual time=4.659..57.134 rows=20.00 loops=1)
+         ->  Seq Scan on orders_at_scale (actual time=4.543..56.583 rows=20.00 loops=1)
                Filter: (account_id = 4242)
                Rows Removed by Filter: 999980
                Buffers: local read=7360 written=1017
  Planning:
    Buffers: shared hit=33
- Planning Time: 4.960 ms
- Execution Time: 57.192 ms
+ Planning Time: 5.115 ms
+ Execution Time: 56.634 ms
 (14 rows)
 
 CREATE INDEX ON orders_at_scale (account_id, created_at DESC);
@@ -46,15 +46,15 @@ ORDER BY created_at DESC
 LIMIT 10;
                                                             QUERY PLAN                                                             
 -----------------------------------------------------------------------------------------------------------------------------------
- Limit (actual time=0.035..0.089 rows=10.00 loops=1)
+ Limit (actual time=0.035..0.090 rows=10.00 loops=1)
    Buffers: shared hit=3, local hit=3 read=11
-   ->  Index Scan using orders_at_scale_account_id_created_at_idx on orders_at_scale (actual time=0.034..0.087 rows=10.00 loops=1)
+   ->  Index Scan using orders_at_scale_account_id_created_at_idx on orders_at_scale (actual time=0.034..0.088 rows=10.00 loops=1)
          Index Cond: (account_id = 4242)
          Index Searches: 1
          Buffers: shared hit=3, local hit=3 read=11
  Planning:
-   Buffers: shared hit=24, local read=1
- Planning Time: 0.140 ms
+   Buffers: shared hit=28, local read=1
+ Planning Time: 0.146 ms
  Execution Time: 0.100 ms
 (10 rows)
 
