@@ -16,11 +16,16 @@
             <a class="navbar-brand fw-semibold" href="{% url 'core:home' %}">ARIA Home</a>
             <div class="navbar-nav ms-sm-auto">
                 <a class="nav-link" href="{% url 'products:browse' %}">View store</a>
+                {% if can_shop %}
+                <a class="nav-link" href="{% url 'cart:detail' %}">Cart ({{ cart_count }})</a>
+                {% endif %}
             </div>
 
             {% if username %}
                 <div class="navbar-nav ms-sm-3">
                     {% comment %} <a class="nav-link" href="{% url 'accounts:account' %}">My Account</a> {% endcomment %}
+                    {% if can_shop %}<a class="nav-link" href="{% url 'orders:history' %}">My orders</a>{% endif %}
+                    {% if is_staff_viewer %}<a class="nav-link" href="{% url 'orders:staff_list' %}">Orders</a>{% endif %}
                     <a class="nav-link" href="{% url 'accounts:address_list' %}">Addresses</a>
                     <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
                         {% csrf_token %}
@@ -29,6 +34,7 @@
                 </div>
             {% else %}
                 <div class="navbar-nav ms-sm-3">
+                    <a class="nav-link" href="{% url 'orders:lookup' %}">Find my order</a>
                     <a class="nav-link" href="{% url 'accounts:login' %}">Log In</a>
                     <a class="nav-link" href="{% url 'accounts:register' %}">Register</a>
                 </div>

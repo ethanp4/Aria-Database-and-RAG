@@ -153,6 +153,16 @@ class AddressTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             make_address(self.me, line1='Second', is_default=True)
 
+    def test_address_form_rejects_unknown_region_and_normalizes_code(self):
+        bad = AddressForm(address_data(region='Ontaro'))
+        self.assertFalse(bad.is_valid())
+        self.assertIn('region', bad.errors)
+        good = AddressForm(address_data(region=' bc '))
+        self.assertTrue(good.is_valid(), good.errors)
+        self.assertEqual(good.cleaned_data['region'], 'BC')
+        wrong_country = AddressForm(address_data(country='US', region='BC'))
+        self.assertFalse(wrong_country.is_valid())
+
     def test_rejects_country_outside_ca_us(self):
         form = AddressForm(data=address_data(country='FR'))
 

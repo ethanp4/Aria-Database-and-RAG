@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_id }}{% endblock %}
+
+{% block content %}
+<main class="container py-5">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+    <p><a class="text-decoration-none" href="{% url 'orders:staff_list' %}">&larr; All orders</a></p>
+    {% include "orders/_order_body.html" %}
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h2 class="h6">Customer</h2>
+            <p class="mb-1">{% if order.account %}Account: {{ order.account.username }}{% else %}Guest{% endif %}</p>
+            <p class="mb-1">Name: {{ order.contact_name|default:"-" }}</p>
+            <p class="mb-1">Email: {{ order.contact_email|default:"-" }}</p>
+            {% if order.risk_score is not None %}<p class="mb-0">Risk score: {{ order.risk_score }}</p>{% endif %}
+        </div>
+    </div>
+
+    {% if ship_form %}
+    <form method="post" action="{% url 'orders:staff_mark_shipped' order.order_id %}" class="card border-0 shadow-sm mt-4">
+        {% csrf_token %}
+        <div class="card-body">
+            <h2 class="h6">Mark as shipped</h2>
+            {{ ship_form.non_field_errors }}
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-4">{{ ship_form.carrier.label_tag }}{{ ship_form.carrier }}{{ ship_form.carrier.errors }}</div>
+                <div class="col-sm-5">{{ ship_form.tracking_number.label_tag }}{{ ship_form.tracking_number }}{{ ship_form.tracking_number.errors }}</div>
+                <div class="col-sm-3"><button type="submit" class="btn btn-primary">Mark shipped</button></div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</main>
+{% endblock %}

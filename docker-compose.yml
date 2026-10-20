@@ -1,11 +1,44 @@
 services:
   django:
     build: .
+    container_name: django
     image: django
     ports:
       - 8000:8000
+    # values come from the .env file in the repo root (compose reads it automatically)
     environment:
-      - DB_HOST=host.docker.internal
-  
-  # postgresql:
-  #   image: postgres:18
+      - DB_NAME=${DB_NAME:-aria}
+      - DB_USER=${DB_USER:-aria}
+      - DB_PASSWORD=${DB_PASSWORD:-pass}
+      # inside compose, always talk to the postgresql service below
+      - DB_HOST=db
+      - DB_PORT=5432
+      - SAMPLE_ACCOUNT_PASSWORD=${SAMPLE_ACCOUNT_PASSWORD:-aaaa}
+      # default accounts created on startup (see create_default_accounts)
+      - DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_USERNAME:-}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-}
+      - DEFAULT_STAFF_USERNAME=${DEFAULT_STAFF_USERNAME:-}
+      - DEFAULT_STAFF_PASSWORD=${DEFAULT_STAFF_PASSWORD:-}
+      - DEFAULT_STAFF_EMAIL=${DEFAULT_STAFF_EMAIL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    container_name: django-db
+    image: postgres:18
+    environment:
+      - POSTGRES_DB=${DB_NAME:-aria}
+      - POSTGRES_USER=${DB_USER:-aria}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-pass}
+    # exposed on the host as 5433 so it doesn't clash with a local postgresql on 5432
+    ports:
+      - ${DB_DOCKER_PORT:-5433}:5432
+    volumes:
+      - ./pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

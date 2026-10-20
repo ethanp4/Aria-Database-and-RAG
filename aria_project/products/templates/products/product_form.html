@@ -17,8 +17,14 @@
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
                         {% endif %}
+                        {% for hidden in form.hidden_fields %}
+                            {{ hidden }}
+                            {% if hidden.errors %}
+                            <div class="alert alert-danger" role="alert">Please reload this page and try again.</div>
+                            {% endif %}
+                        {% endfor %}
 
-                        {% for field in form %}
+                        {% for field in form.visible_fields %}
                             {% if field.name == 'inventory_reason' %}
                             {% elif field.name == 'is_active' %}
                             <div class="form-check mb-3">

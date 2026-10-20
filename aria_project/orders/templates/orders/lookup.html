@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Find my order{% endblock %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 32rem;">
+    <h1 class="h2 mb-4">Find my order</h1>
+    <p>Enter the order number and email address used at checkout.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ form.order_number.id_for_label }}">Order number</label>
+            <input class="form-control" type="number" name="order_number" id="{{ form.order_number.id_for_label }}" value="{{ form.order_number.value|default_if_none:'' }}" required>
+            {% for e in form.order_number.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+            <input class="form-control" type="email" name="email" id="{{ form.email.id_for_label }}" value="{{ form.email.value|default_if_none:'' }}" required>
+            {% for e in form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <button class="btn btn-primary" type="submit">Find order</button>
+    </form>
+</main>
+{% endblock %}

@@ -1,0 +1,1 @@
+<span class="badge {% if order.status == 'PAYMENT_FAILED' or order.status == 'OUT_OF_STOCK' or order.status == 'CANCELLED' %}text-bg-danger{% elif order.status == 'PENDING_PAYMENT' %}text-bg-secondary{% else %}text-bg-success{% endif %}">{{ order.get_status_display }}</span>

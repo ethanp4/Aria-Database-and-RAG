@@ -1,0 +1,7 @@
+.env
+**/.env
+venv
+.git
+**/__pycache__
+**/*.pyc
+pgdata
