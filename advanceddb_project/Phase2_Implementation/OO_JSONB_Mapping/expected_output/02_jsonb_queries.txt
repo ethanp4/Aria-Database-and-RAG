@@ -1,0 +1,125 @@
+SELECT order_id,
+       doc -> 'customer' ->> 'username'          AS customer,
+       doc -> 'shipping_address' ->> 'city'      AS city,
+       doc -> 'shipment' ->> 'tracking_number'   AS tracking_number,
+       (doc -> 'totals' ->> 'total')::numeric    AS total
+FROM order_document
+WHERE doc @> '{"status": "DELIVERED",
+               "shipping_address": {"region": "BC"},
+               "shipment": {"carrier": "Canada Post"}}'
+ORDER BY order_id
+LIMIT 10;
+ order_id |    customer    |   city    | tracking_number  | total  
+----------+----------------+-----------+------------------+--------
+        9 | ines.bouchard  | Victoria  | 6488404799409652 | 763.22
+       24 | leila.cote     | Nanaimo   | 2495494937682230 | 146.89
+       39 | kai.morgan     | Vancouver | 7760102737202926 | 157.86
+       50 | ines.bouchard  | Victoria  | 8197334119856399 | 238.95
+       65 | sage.stewart2  | Nanaimo   | 8261786991524361 | 394.12
+       84 | reese.costa    | Vancouver | 6658717731148043 |  50.40
+       94 | priya.anderson | Vancouver | 5067867493375366 | 176.56
+      106 | finley.nguyen  | Vancouver | 7579404657865678 | 245.15
+      109 | ines.bouchard  | Victoria  | 1271633529339217 | 526.23
+      131 | alex.wilson    | Nanaimo   | 6383459183147799 | 754.19
+(10 rows)
+
+BEGIN;
+BEGIN
+SET LOCAL enable_seqscan = off;
+SET
+EXPLAIN (COSTS OFF)
+SELECT order_id FROM order_document
+WHERE doc @> '{"status": "DELIVERED", "shipping_address": {"region": "BC"}, "shipment": {"carrier": "Canada Post"}}';
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on order_document
+   Recheck Cond: (doc @> '{"status": "DELIVERED", "shipment": {"carrier": "Canada Post"}, "shipping_address": {"region": "BC"}}'::jsonb)
+   ->  Bitmap Index Scan on idx_order_document_doc
+         Index Cond: (doc @> '{"status": "DELIVERED", "shipment": {"carrier": "Canada Post"}, "shipping_address": {"region": "BC"}}'::jsonb)
+(4 rows)
+
+ROLLBACK;
+ROLLBACK
+SELECT item ->> 'category'                         AS category,
+       sum((item ->> 'quantity')::int)             AS units,
+       sum((item ->> 'line_total')::numeric)       AS revenue
+FROM order_document d
+CROSS JOIN LATERAL jsonb_array_elements(d.doc -> 'items') AS item
+WHERE d.doc ->> 'status' IN ('CONFIRMED', 'SHIPPED', 'DELIVERED', 'REFUNDED')
+GROUP BY 1
+ORDER BY revenue DESC;
+           category           | units | revenue  
+------------------------------+-------+----------
+ Buoyancy & Exposure          |   246 | 40710.36
+ Dive Computers & Instruments |    91 | 38923.35
+ Safety & Surface Gear        |   358 | 29214.26
+ Regulators & Air             |    70 | 20200.68
+ Fins & Boots                 |   137 | 19332.82
+ Masks & Snorkels             |   178 | 11699.89
+(6 rows)
+
+SELECT order_id,
+       doc -> 'shipment' ->> 'method'                                      AS shipping_method,
+       jsonb_path_query_array(doc, '$.items[*] ? (@.unit_price > 500).sku') AS high_value_skus
+FROM order_document
+WHERE doc @? '$.items[*] ? (@.unit_price > 500)'
+ORDER BY order_id
+LIMIT 10;
+ order_id | shipping_method |  high_value_skus  
+----------+-----------------+-------------------
+        9 | STANDARD        | ["GEN-BCD-03"]
+       12 | STANDARD        | ["GEN-BCD-07"]
+       21 | STANDARD        | ["GEN-AICOMP-10"]
+       52 | STANDARD        | ["GEN-AICOMP-03"]
+       67 | STANDARD        | ["GEN-AICOMP-05"]
+       71 | PRIORITY        | ["GEN-AICOMP-01"]
+       77 | PRIORITY        | ["GEN-AICOMP-10"]
+       85 | STANDARD        | ["GEN-BCD-01"]
+      110 | STANDARD        | ["GEN-AICOMP-01"]
+      112 | STANDARD        | ["GEN-AICOMP-03"]
+(10 rows)
+
+SELECT doc -> 'payment' ->> 'type'          AS payment_type,
+       doc -> 'payment' ->> 'method'        AS method,
+       count(*)                             AS orders,
+       sum((doc -> 'totals' ->> 'total')::numeric) AS value
+FROM order_document
+WHERE doc -> 'payment' ->> 'status' IN ('CAPTURED', 'REFUNDED')
+GROUP BY 1, 2
+ORDER BY orders DESC;
+ payment_type |   method    | orders |   value   
+--------------+-------------+--------+-----------
+ card         | CREDIT_CARD |    267 | 113772.27
+ wallet       | PAYPAL      |     76 |  29297.49
+ card         | DEBIT_CARD  |     67 |  26430.06
+ wallet       | GIFT_CARD   |     24 |  12168.38
+(4 rows)
+
+SELECT o.order_id, o.status, d.doc ->> 'status' AS doc_status,
+       o.total_amount, (d.doc -> 'totals' ->> 'total')::numeric AS doc_total
+FROM orders o
+JOIN order_document d ON d.order_id = o.order_id
+WHERE o.status <> d.doc ->> 'status'
+   OR o.total_amount <> (d.doc -> 'totals' ->> 'total')::numeric
+   OR (SELECT count(*) FROM order_items oi WHERE oi.order_id = o.order_id)
+      <> jsonb_array_length(d.doc -> 'items');
+ order_id | status | doc_status | total_amount | doc_total 
+----------+--------+------------+--------------+-----------
+(0 rows)
+
+BEGIN;
+BEGIN
+UPDATE order_document
+   SET doc = jsonb_set(doc, '{gift}', '{"wrapped": true, "message": "Happy diving!"}')
+ WHERE order_id = (SELECT min(order_id) FROM order_document);
+UPDATE 1
+SELECT order_id, doc -> 'gift' AS gift
+FROM order_document
+WHERE doc ? 'gift';
+ order_id |                     gift                      
+----------+-----------------------------------------------
+        1 | {"message": "Happy diving!", "wrapped": true}
+(1 row)
+
+ROLLBACK;
+ROLLBACK
