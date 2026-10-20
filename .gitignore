@@ -2,3 +2,9 @@ __pycache__
 *.pyc
 .env
 aria_project\aria\.env
+# Phase 2: Firebase service-account keys and local credentials (never commit)
+advanceddb_project/**/serviceAccount*.json
+*firebase-adminsdk*.json
+*.key.json
+.pgpass
+pgpass.conf
