@@ -11,5 +11,8 @@ CREATE DATABASE aria_phase2
     ENCODING 'UTF8'
     TEMPLATE template0;
 
+-- Seed timestamps are UTC; reports group by UTC day/month in every client (psql, pgAdmin).
+ALTER DATABASE aria_phase2 SET timezone TO 'UTC';
+
 COMMENT ON DATABASE aria_phase2 IS
     'Aria course Phase 2: relational implementation, seed data and query portfolio (synthetic data only)';

@@ -1,0 +1,46 @@
+WITH product_sales AS (
+    SELECT c.name                       AS category,
+           p.sku,
+           p.name                       AS product,
+           count(DISTINCT o.order_id)   AS orders,
+           sum(oi.quantity)             AS units,
+           sum(oi.line_total)           AS revenue
+    FROM order_items oi
+    JOIN orders o     ON o.order_id = oi.order_id
+    JOIN products p   ON p.product_id = oi.product_id
+    JOIN categories c ON c.category_id = p.category_id
+    WHERE o.confirmed_payment_id IS NOT NULL          -- paid orders only
+    GROUP BY c.name, p.sku, p.name
+),
+ranked AS (
+    SELECT ps.*,
+           rank() OVER (PARTITION BY category ORDER BY revenue DESC)              AS rank_in_category,
+           round(100 * revenue / sum(revenue) OVER (PARTITION BY category), 1)    AS pct_of_category
+    FROM product_sales ps
+)
+SELECT category, rank_in_category, sku, product, orders, units, revenue, pct_of_category
+FROM ranked
+WHERE rank_in_category <= 3
+ORDER BY category, rank_in_category;
+           category           | rank_in_category |      sku      |                    product                     | orders | units | revenue | pct_of_category 
+------------------------------+------------------+---------------+------------------------------------------------+--------+-------+---------+-----------------
+ Buoyancy & Exposure          |                1 | GEN-BCD-06    | Compact Back-inflate buoyancy compensator      |      4 |     4 | 2920.52 |             7.2
+ Buoyancy & Exposure          |                2 | SUIT-001      | 3 mm full wetsuit                              |      7 |     8 | 2239.60 |             5.5
+ Buoyancy & Exposure          |                3 | GEN-BCD-07    | Expedition Back-inflate buoyancy compensator   |      3 |     3 | 2239.05 |             5.5
+ Dive Computers & Instruments |                1 | GEN-AICOMP-06 | Compact Air-integrated dive computer           |      7 |     7 | 6685.91 |            17.2
+ Dive Computers & Instruments |                2 | GEN-AICOMP-10 | Deluxe Air-integrated dive computer            |      3 |     3 | 3120.09 |             8.0
+ Dive Computers & Instruments |                3 | GEN-AICOMP-03 | Professional Air-integrated dive computer      |      3 |     3 | 2674.35 |             6.9
+ Fins & Boots                 |                1 | GEN-FIN-10    | Deluxe Open-heel paddle fins                   |     10 |    11 | 2546.83 |            13.2
+ Fins & Boots                 |                2 | GEN-FIN-02    | Travel Open-heel paddle fins                   |      5 |     8 | 1549.84 |             8.0
+ Fins & Boots                 |                3 | GEN-FIN-04    | Cold-water Open-heel paddle fins               |      4 |     7 | 1422.26 |             7.4
+ Masks & Snorkels             |                1 | GEN-MASK-05   | Warm-water Low-volume dive mask                |     12 |    14 | 1154.30 |             9.9
+ Masks & Snorkels             |                2 | GEN-MASK-02   | Travel Low-volume dive mask                    |     11 |    15 | 1152.30 |             9.8
+ Masks & Snorkels             |                3 | GEN-MASK-09   | Technical Low-volume dive mask                 |      9 |    11 |  989.34 |             8.5
+ Regulators & Air             |                1 | GEN-REG2-01   | Recreational Adjustable regulator second stage |      6 |    12 | 3479.40 |            17.2
+ Regulators & Air             |                2 | REG-002       | Adjustable second stage                        |      7 |     9 | 2609.55 |            12.9
+ Regulators & Air             |                3 | GEN-REG1-04   | Cold-water Balanced regulator first stage      |      4 |     4 | 1844.72 |             9.1
+ Safety & Surface Gear        |                1 | GEN-LIGHT-02  | Travel Rechargeable dive torch                 |      8 |    12 | 1955.76 |             6.7
+ Safety & Surface Gear        |                2 | GEN-SMB-07    | Expedition Surface marker buoy                 |     15 |    19 | 1746.86 |             6.0
+ Safety & Surface Gear        |                3 | GEN-REEL-09   | Technical Dive reel with line                  |     12 |    19 | 1594.86 |             5.5
+(18 rows)
+

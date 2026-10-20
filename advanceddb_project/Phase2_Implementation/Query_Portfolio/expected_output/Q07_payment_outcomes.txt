@@ -1,0 +1,29 @@
+SELECT CASE WHEN grouping(p.method_type) = 1 THEN 'ALL METHODS' ELSE p.method_type END AS method,
+       CASE WHEN grouping(p.method_type) = 1 THEN ''
+            WHEN grouping(p.card_brand) = 1 THEN '(subtotal)'
+            ELSE COALESCE(NULLIF(p.card_brand, ''), '-') END                             AS brand,
+       count(*)                                                       AS attempts,
+       count(*) FILTER (WHERE p.status IN ('CAPTURED', 'REFUNDED'))   AS captured,
+       count(*) FILTER (WHERE p.status = 'DECLINED')                  AS declined,
+       count(*) FILTER (WHERE p.status = 'VOIDED')                    AS voided,
+       round(100.0 * count(*) FILTER (WHERE p.status = 'DECLINED') / count(*), 1) AS decline_rate_pct,
+       COALESCE(sum(p.amount) FILTER (WHERE p.status IN ('CAPTURED', 'REFUNDED')), 0) AS captured_value
+FROM payments p
+GROUP BY GROUPING SETS ((p.method_type, p.card_brand), (p.method_type), ())
+ORDER BY grouping(p.method_type), p.method_type, grouping(p.card_brand), brand;
+   method    |      brand       | attempts | captured | declined | voided | decline_rate_pct | captured_value 
+-------------+------------------+----------+----------+----------+--------+------------------+----------------
+ CREDIT_CARD | Amex             |       28 |       24 |        3 |      1 |             10.7 |        9276.61
+ CREDIT_CARD | Mastercard       |      116 |      107 |        8 |      1 |              6.9 |       38434.44
+ CREDIT_CARD | Visa             |      152 |      136 |        9 |      7 |              5.9 |       66061.22
+ CREDIT_CARD | (subtotal)       |      296 |      267 |       20 |      9 |              6.8 |      113772.27
+ DEBIT_CARD  | Mastercard Debit |       49 |       45 |        2 |      2 |              4.1 |       15190.16
+ DEBIT_CARD  | Visa Debit       |       28 |       22 |        3 |      3 |             10.7 |       11239.90
+ DEBIT_CARD  | (subtotal)       |       77 |       67 |        5 |      5 |              6.5 |       26430.06
+ GIFT_CARD   | -                |       27 |       24 |        1 |      2 |              3.7 |       12168.38
+ GIFT_CARD   | (subtotal)       |       27 |       24 |        1 |      2 |              3.7 |       12168.38
+ PAYPAL      | -                |       80 |       76 |        4 |      0 |              5.0 |       29297.49
+ PAYPAL      | (subtotal)       |       80 |       76 |        4 |      0 |              5.0 |       29297.49
+ ALL METHODS |                  |      480 |      434 |       30 |     16 |              6.3 |      181668.20
+(12 rows)
+

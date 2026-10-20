@@ -1,0 +1,124 @@
+CREATE OR REPLACE VIEW v_order_summary AS
+SELECT o.order_id,
+       o.created_at,
+       o.status,
+       COALESCE(a.username, 'guest')                         AS customer,
+       o.account_id,
+       o.contact_name,
+       items.item_lines,
+       items.units,
+       o.total_amount,
+       CASE WHEN pay.last4 IS NOT NULL THEN pay.card_brand || ' **** ' || pay.last4
+            ELSE initcap(replace(pay.method_type, '_', ' ')) END AS payment,
+       pay.status                                            AS payment_status,
+       c.name                                                AS carrier,
+       replace(c.tracking_url_template, '{tracking_number}', o.tracking_number) AS tracking_url,
+       round(extract(epoch FROM o.delivered_at - o.shipped_at)::numeric / 86400, 1) AS transit_days,
+       COALESCE(ref.refunded, 0)                             AS refunded_amount
+FROM orders o
+LEFT JOIN accounts a ON a.account_id = o.account_id
+LEFT JOIN carriers c ON c.carrier_id = o.carrier_id
+LEFT JOIN LATERAL (                                    -- most recent payment attempt
+    SELECT p.method_type, p.card_brand, p.last4, p.status
+    FROM payments p
+    WHERE p.order_id = o.order_id
+    ORDER BY p.created_at DESC
+    LIMIT 1
+) pay ON TRUE
+LEFT JOIN LATERAL (
+    SELECT count(*) AS item_lines, sum(oi.quantity) AS units
+    FROM order_items oi
+    WHERE oi.order_id = o.order_id
+) items ON TRUE
+LEFT JOIN LATERAL (
+    SELECT sum(r.amount) AS refunded
+    FROM refunds r
+    WHERE r.order_id = o.order_id AND r.status = 'COMPLETED'
+) ref ON TRUE;
+CREATE VIEW
+COMMENT ON VIEW v_order_summary IS
+    'Customer-safe order summary: masked payment only, no token, no risk_score. Filter by account_id for a customer.';
+COMMENT
+CREATE OR REPLACE VIEW v_staff_refund_queue AS
+SELECT r.refund_id,
+       r.requested_at,
+       now() - r.requested_at                      AS waiting,
+       r.order_id,
+       COALESCE(a.username, 'guest')               AS customer,
+       r.amount,
+       o.total_amount                              AS order_total,
+       round(100 * r.amount / o.total_amount, 1)   AS pct_of_order,
+       r.reason,
+       r.status,
+       r.risk_score,
+       (SELECT count(*) FROM duplicate_refund_attempts d
+         WHERE d.order_id = r.order_id)            AS duplicate_attempts,
+       (SELECT count(*) FROM refunds r2 JOIN orders o2 ON o2.order_id = r2.order_id
+         WHERE o.account_id IS NOT NULL AND o2.account_id = o.account_id
+           AND r2.refund_id <> r.refund_id)        AS customer_prior_refunds
+FROM refunds r
+JOIN orders o ON o.order_id = r.order_id
+LEFT JOIN accounts a ON a.account_id = o.account_id
+WHERE r.status IN ('REQUESTED', 'APPROVED');
+CREATE VIEW
+COMMENT ON VIEW v_staff_refund_queue IS
+    'STAFF/ADMIN ONLY: includes risk_score. Never expose to customers or customer-facing chatbot answers.';
+COMMENT
+SELECT order_id, created_at::date AS ordered, status, item_lines, units, total_amount,
+       payment, carrier, transit_days, refunded_amount
+FROM v_order_summary
+WHERE account_id = (SELECT account_id FROM orders WHERE account_id IS NOT NULL
+                    GROUP BY account_id ORDER BY count(*) DESC, account_id LIMIT 1)
+ORDER BY created_at DESC;
+ order_id |  ordered   |     status     | item_lines | units | total_amount |          payment           |   carrier   | transit_days | refunded_amount 
+----------+------------+----------------+------------+-------+--------------+----------------------------+-------------+--------------+-----------------
+      476 | 2026-09-24 | SHIPPED        |          2 |     2 |       164.79 | Visa **** 3983             | Canada Post |              |               0
+      466 | 2026-09-11 | DELIVERED      |          1 |     1 |        52.58 | Mastercard Debit **** 1354 | Canada Post |          6.1 |               0
+      464 | 2026-09-11 | DELIVERED      |          4 |     5 |      1152.49 | Mastercard **** 7726       | Canada Post |          5.1 |               0
+      459 | 2026-09-08 | DELIVERED      |          2 |     3 |       469.39 | Gift Card                  | Canada Post |          9.2 |               0
+      435 | 2026-08-19 | DELIVERED      |          1 |     1 |       238.15 | Paypal                     | Purolator   |          4.2 |               0
+      401 | 2026-07-26 | PAYMENT_FAILED |          3 |     3 |       228.58 | Visa **** 8040             |             |              |               0
+      380 | 2026-07-17 | DELIVERED      |          2 |     3 |       300.38 | Visa **** 3104             | Canada Post |          6.3 |               0
+      352 | 2026-07-04 | DELIVERED      |          1 |     1 |      1069.75 | Paypal                     | Canada Post |          5.3 |               0
+      324 | 2026-06-20 | DELIVERED      |          2 |     3 |       220.47 | Mastercard **** 9560       | Canada Post |          5.3 |               0
+      301 | 2026-06-03 | PAYMENT_FAILED |          1 |     1 |        66.08 | Visa **** 8330             |             |              |               0
+      296 | 2026-05-31 | DELIVERED      |          2 |     2 |       178.23 | Visa Debit **** 3301       | Purolator   |          3.1 |               0
+      281 | 2026-05-21 | DELIVERED      |          4 |     4 |      1288.44 | Mastercard **** 5949       | Canada Post |          4.0 |               0
+      277 | 2026-05-16 | DELIVERED      |          4 |     5 |       474.86 | Paypal                     | UPS         |          2.0 |               0
+      269 | 2026-05-10 | DELIVERED      |          1 |     1 |       103.53 | Paypal                     | UPS         |          1.2 |               0
+      257 | 2026-05-05 | DELIVERED      |          3 |     3 |       255.52 | Paypal                     | Canada Post |          6.3 |               0
+      243 | 2026-04-28 | DELIVERED      |          1 |     1 |       446.58 | Paypal                     | UPS         |          4.2 |               0
+      236 | 2026-04-23 | DELIVERED      |          3 |     5 |       418.04 | Visa **** 4757             | Purolator   |          2.2 |               0
+      226 | 2026-04-13 | DELIVERED      |          1 |     1 |        86.18 | Mastercard Debit **** 8220 | Purolator   |          4.1 |               0
+      222 | 2026-04-11 | DELIVERED      |          2 |     2 |       610.93 | Mastercard **** 6891       | Purolator   |          5.3 |               0
+      182 | 2026-02-22 | DELIVERED      |          1 |     1 |       145.04 | Paypal                     | UPS         |          2.3 |               0
+      151 | 2026-01-26 | DELIVERED      |          4 |     4 |      1503.80 | Visa **** 8315             | Purolator   |          4.0 |               0
+      145 | 2026-01-23 | DELIVERED      |          2 |     2 |       636.78 | Mastercard **** 2370       | Canada Post |          6.0 |               0
+      133 | 2026-01-13 | DELIVERED      |          1 |     1 |        74.98 | Visa **** 9933             | Purolator   |          4.3 |               0
+      128 | 2026-01-08 | REFUNDED       |          4 |     4 |       523.36 | Paypal                     | FedEx       |          4.0 |          523.36
+      119 | 2025-12-31 | DELIVERED      |          1 |     1 |       268.74 | Visa **** 9900             | UPS         |          2.3 |               0
+      117 | 2025-12-28 | DELIVERED      |          1 |     2 |       373.97 | Mastercard **** 1325       | Purolator   |          5.1 |               0
+      109 | 2025-12-25 | DELIVERED      |          2 |     3 |       526.23 | Mastercard **** 4530       | Canada Post |          4.2 |               0
+       78 | 2025-12-04 | DELIVERED      |          4 |     5 |       712.72 | Paypal                     | UPS         |          2.3 |               0
+       72 | 2025-12-01 | REFUNDED       |          1 |     1 |       200.48 | Visa Debit **** 9130       | FedEx       |          4.3 |          200.48
+       55 | 2025-11-19 | PAYMENT_FAILED |          1 |     2 |       219.39 | Mastercard Debit **** 4386 |             |              |               0
+       50 | 2025-11-17 | DELIVERED      |          1 |     3 |       238.95 | Mastercard Debit **** 9792 | Canada Post |          5.1 |               0
+       29 | 2025-10-27 | DELIVERED      |          4 |     5 |       484.95 | Paypal                     | Purolator   |          5.1 |               0
+       19 | 2025-10-17 | DELIVERED      |          2 |     3 |       287.65 | Visa **** 1858             | Purolator   |          2.1 |               0
+        9 | 2025-10-08 | DELIVERED      |          1 |     1 |       763.22 | Mastercard **** 1350       | Canada Post |          6.1 |               0
+        1 | 2025-10-01 | DELIVERED      |          2 |     2 |       577.25 | Visa **** 6697             | Purolator   |          4.2 |               0
+(35 rows)
+
+SELECT refund_id, requested_at::date AS requested, order_id, customer, amount, pct_of_order,
+       reason, risk_score, duplicate_attempts, customer_prior_refunds
+FROM v_staff_refund_queue
+ORDER BY risk_score DESC, requested_at;
+ refund_id | requested  | order_id |  customer   | amount | pct_of_order |        reason        | risk_score | duplicate_attempts | customer_prior_refunds 
+-----------+------------+----------+-------------+--------+--------------+----------------------+------------+--------------------+------------------------
+       133 | 2026-09-21 |      445 | reese.khan  | 107.94 |         24.2 | Not as described     |      60.27 |                  0 |                      4
+       136 | 2026-09-30 |      450 | arlo.rivera | 150.40 |         65.4 | Wrong size           |      36.62 |                  0 |                      1
+       137 | 2026-09-28 |      455 | lake.garcia | 549.62 |        100.0 | Wrong size           |      35.00 |                  0 |                      0
+       135 | 2026-09-22 |      449 | theo.fraser |  69.90 |          6.5 | Item arrived damaged |      16.95 |                  0 |                      0
+       130 | 2026-09-21 |      441 | drew.cote   |  81.95 |         34.8 | Wrong size           |      15.44 |                  0 |                      0
+(5 rows)
+

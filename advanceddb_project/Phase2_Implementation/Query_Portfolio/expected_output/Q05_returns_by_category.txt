@@ -1,0 +1,42 @@
+SELECT c.name                                                          AS category,
+       COALESCE(-sum(m.change_qty) FILTER (WHERE m.reason = 'SALE'), 0)  AS units_sold,
+       COALESCE(sum(m.change_qty) FILTER (WHERE m.reason = 'REFUND'), 0) AS units_returned,
+       round(100.0 * COALESCE(sum(m.change_qty) FILTER (WHERE m.reason = 'REFUND'), 0)
+                   / NULLIF(-sum(m.change_qty) FILTER (WHERE m.reason = 'SALE'), 0), 1) AS return_rate_pct
+FROM categories c
+JOIN products p ON p.category_id = c.category_id
+LEFT JOIN inventory_movements m ON m.product_id = p.product_id
+GROUP BY c.name
+ORDER BY return_rate_pct DESC;
+           category           | units_sold | units_returned | return_rate_pct 
+------------------------------+------------+----------------+-----------------
+ Masks & Snorkels             |        178 |             31 |            17.4
+ Buoyancy & Exposure          |        246 |             30 |            12.2
+ Dive Computers & Instruments |         91 |             11 |            12.1
+ Regulators & Air             |         70 |              8 |            11.4
+ Safety & Surface Gear        |        358 |             39 |            10.9
+ Fins & Boots                 |        137 |             11 |             8.0
+(6 rows)
+
+SELECT r.reason,
+       count(*)                                            AS requests,
+       count(*) FILTER (WHERE r.status = 'COMPLETED')      AS completed,
+       count(*) FILTER (WHERE r.status = 'DENIED')         AS denied,
+       count(*) FILTER (WHERE r.status IN ('REQUESTED', 'APPROVED')) AS still_open,
+       round(100.0 * count(*) FILTER (WHERE r.status = 'COMPLETED')
+                   / NULLIF(count(*) FILTER (WHERE r.status IN ('COMPLETED', 'DENIED')), 0), 1) AS approval_rate_pct,
+       COALESCE(sum(r.amount) FILTER (WHERE r.status = 'COMPLETED'), 0) AS refunded_amount,
+       round(avg(r.risk_score), 1)                         AS avg_risk_score
+FROM refunds r
+GROUP BY r.reason
+ORDER BY requests DESC;
+            reason            | requests | completed | denied | still_open | approval_rate_pct | refunded_amount | avg_risk_score 
+------------------------------+----------+-----------+--------+------------+-------------------+-----------------+----------------
+ Wrong size                   |       43 |        33 |      7 |          3 |              82.5 |         8268.29 |           39.7
+ Not as described             |       27 |        18 |      8 |          1 |              69.2 |         5065.46 |           42.3
+ Changed my mind              |       26 |        14 |     12 |          0 |              53.8 |         4690.42 |           40.0
+ Item arrived damaged         |       18 |        10 |      7 |          1 |              58.8 |         2636.07 |           30.9
+ Arrived too late for my trip |       17 |        13 |      4 |          0 |              76.5 |         2619.56 |           44.5
+ Ordered twice by mistake     |        6 |         4 |      2 |          0 |              66.7 |         1241.96 |           34.8
+(6 rows)
+

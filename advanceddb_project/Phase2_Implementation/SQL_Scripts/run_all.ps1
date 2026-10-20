@@ -22,5 +22,7 @@ Invoke-Psql 'postgres' '00_create_database.sql'
 foreach ($f in '01_tables.sql', '02_indexes.sql', '03_seed.sql', '04_verify_seed.sql') {
     Invoke-Psql 'aria_phase2' $f
 }
-Invoke-Psql 'aria_phase2' '..\Query_Portfolio\00_portfolio_objects.sql'
-Write-Host 'aria_phase2 is ready.'
+Write-Host 'aria_phase2 is built. Running the query portfolio (installs views, triggers, procedure)...'
+$env:PSQL = $psql
+& (Join-Path $PSScriptRoot '..\Query_Portfolio\run_portfolio.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Query portfolio had unexpected errors' }

@@ -1,0 +1,50 @@
+SELECT * FROM (
+SELECT COALESCE(CASE WHEN ap.supplier_id IS NOT NULL THEN 'Supplier' ELSE 'Carrier' END, 'TOTAL') AS payee_type,
+       COALESCE(s.name, c.name, '')                                              AS payee,
+       count(*) FILTER (WHERE ap.status <> 'PAID')                               AS unpaid_bills,
+       COALESCE(sum(ap.amount_due) FILTER (WHERE ap.status <> 'PAID'
+                    AND ap.due_date >= DATE '2026-10-01'), 0)                    AS not_yet_due,
+       COALESCE(sum(ap.amount_due) FILTER (WHERE ap.status <> 'PAID'
+                    AND ap.due_date <  DATE '2026-10-01'
+                    AND ap.due_date >= DATE '2026-10-01' - 30), 0)               AS overdue_1_30,
+       COALESCE(sum(ap.amount_due) FILTER (WHERE ap.status <> 'PAID'
+                    AND ap.due_date <  DATE '2026-10-01' - 30), 0)               AS overdue_31_plus,
+       COALESCE(sum(ap.amount_due) FILTER (WHERE ap.status = 'PAID'
+                    AND ap.paid_at >= TIMESTAMPTZ '2025-10-01 00:00+00'), 0)     AS paid_last_12_months
+FROM accounts_payable ap
+LEFT JOIN suppliers s ON s.supplier_id = ap.supplier_id
+LEFT JOIN carriers  c ON c.carrier_id  = ap.carrier_id
+GROUP BY ROLLUP ((CASE WHEN ap.supplier_id IS NOT NULL THEN 'Supplier' ELSE 'Carrier' END,
+                  COALESCE(s.name, c.name, '')))
+) aging
+ORDER BY payee_type = 'TOTAL', paid_last_12_months DESC;
+ payee_type |           payee            | unpaid_bills | not_yet_due | overdue_1_30 | overdue_31_plus | paid_last_12_months 
+------------+----------------------------+--------------+-------------+--------------+-----------------+---------------------
+ Supplier   | Benthic Gauge Works        |            0 |           0 |            0 |               0 |            20420.22
+ Supplier   | Northern Tide Neoprene     |            0 |           0 |            0 |               0 |            12082.01
+ Supplier   | Gulfstream Dive Imports    |            0 |           0 |            0 |               0 |            11919.63
+ Supplier   | Kelp Coast Distributors    |            1 |     3071.78 |            0 |               0 |            10561.80
+ Supplier   | Polar Water Thermal        |            0 |           0 |            0 |               0 |            10517.01
+ Supplier   | Westcoast Wetsuit Mfg.     |            0 |           0 |            0 |               0 |             8970.42
+ Supplier   | Saltwater Signal Co.       |            0 |           0 |            0 |               0 |             7935.74
+ Supplier   | Lighthouse Safety Gear     |            1 |     2385.06 |            0 |               0 |             7176.86
+ Supplier   | Mariner Tool & Blade       |            0 |           0 |            0 |               0 |             6358.50
+ Supplier   | Pacific Rim Dive Wholesale |            0 |           0 |            0 |               0 |             6265.42
+ Supplier   | Blue Reef Supply Co.       |            0 |           0 |            0 |               0 |             5620.99
+ Supplier   | Atlantic Fin Works         |            1 |     5629.02 |            0 |               0 |             5288.10
+ Supplier   | Lagoon Light Systems       |            0 |           0 |            0 |               0 |             5265.18
+ Supplier   | Coral Gate Trading         |            0 |           0 |            0 |               0 |             5119.28
+ Supplier   | Riptide Footwear           |            0 |           0 |            0 |               0 |             5021.78
+ Supplier   | Driftwood Outdoor Supply   |            1 |     1002.57 |            0 |               0 |             4405.55
+ Supplier   | Salt & Bubble Imports      |            0 |           0 |            0 |               0 |             4311.56
+ Supplier   | Island Snorkel Supply      |            1 |      580.07 |            0 |               0 |             3515.96
+ Supplier   | Deep Current Optics        |            1 |      697.06 |            0 |               0 |             2709.36
+ Supplier   | Clearwater Lens Labs       |            1 |      935.28 |            0 |               0 |             2696.42
+ Carrier    | Canada Post                |            1 |      213.05 |            0 |               0 |             2368.90
+ Carrier    | Purolator                  |            1 |      200.65 |            0 |               0 |             1636.60
+ Carrier    | UPS                        |            0 |           0 |            0 |               0 |             1625.60
+ Carrier    | FedEx                      |            1 |      174.90 |            0 |               0 |             1358.95
+ Supplier   | Abyss Instruments Ltd.     |            1 |     1352.45 |            0 |               0 |                   0
+ TOTAL      |                            |           11 |    16241.89 |            0 |               0 |           153151.84
+(26 rows)
+
