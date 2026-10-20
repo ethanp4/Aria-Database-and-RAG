@@ -1,0 +1,44 @@
+WITH deliveries AS (
+    SELECT o.carrier_id,
+           extract(epoch FROM o.delivered_at - o.shipped_at) / 86400.0 AS transit_days,
+           CASE o.shipping_method WHEN 'STANDARD' THEN 7 WHEN 'EXPRESS' THEN 4 ELSE 3 END
+             + CASE WHEN o.ship_country = 'US' THEN 2 ELSE 0 END    AS promised_days
+    FROM orders o
+    WHERE o.delivered_at IS NOT NULL
+),
+shipments AS (
+    SELECT carrier_id, count(*) AS shipped
+    FROM orders
+    WHERE shipped_at IS NOT NULL
+    GROUP BY carrier_id
+),
+billed AS (
+    -- what the carrier invoiced us (accounts_payable rows whose payee is a carrier)
+    SELECT carrier_id, sum(amount_due) AS billed
+    FROM accounts_payable
+    WHERE carrier_id IS NOT NULL
+    GROUP BY carrier_id
+)
+SELECT c.name                                                      AS carrier,
+       s.shipped,
+       count(d.*)                                                  AS delivered,
+       round(avg(d.transit_days)::numeric, 1)                      AS avg_days,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY d.transit_days)::numeric, 1) AS median_days,
+       round(percentile_cont(0.9) WITHIN GROUP (ORDER BY d.transit_days)::numeric, 1) AS p90_days,
+       round(100.0 * count(*) FILTER (WHERE d.transit_days <= d.promised_days) / count(d.*), 1) AS on_time_pct,
+       b.billed,
+       round(b.billed / s.shipped, 2)                              AS cost_per_shipment
+FROM carriers c
+JOIN shipments s  ON s.carrier_id = c.carrier_id
+JOIN deliveries d ON d.carrier_id = c.carrier_id
+LEFT JOIN billed b ON b.carrier_id = c.carrier_id
+GROUP BY c.name, s.shipped, b.billed
+ORDER BY on_time_pct DESC;
+   carrier   | shipped | delivered | avg_days | median_days | p90_days | on_time_pct | billed  | cost_per_shipment 
+-------------+---------+-----------+----------+-------------+----------+-------------+---------+-------------------
+ UPS         |      90 |        89 |      4.3 |         4.3 |      6.2 |        96.6 | 1625.60 |             18.06
+ Purolator   |     107 |       106 |      3.8 |         3.3 |      5.3 |        89.6 | 1837.25 |             17.17
+ FedEx       |      74 |        74 |      4.9 |         5.1 |      6.9 |        81.1 | 1533.85 |             20.73
+ Canada Post |     161 |       160 |      5.5 |         5.2 |      7.1 |        54.4 | 2581.95 |             16.04
+(4 rows)
+

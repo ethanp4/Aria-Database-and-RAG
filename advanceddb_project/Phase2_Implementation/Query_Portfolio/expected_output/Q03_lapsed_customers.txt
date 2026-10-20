@@ -1,0 +1,67 @@
+SELECT a.username,
+       p.first_name || ' ' || p.last_name AS customer,
+       (SELECT min(o.created_at)::date
+          FROM orders o
+         WHERE o.account_id = a.account_id AND o.confirmed_payment_id IS NOT NULL) AS first_order,
+       (SELECT max(o.created_at)::date
+          FROM orders o
+         WHERE o.account_id = a.account_id AND o.confirmed_payment_id IS NOT NULL) AS last_order,
+       (SELECT count(*)
+          FROM orders o
+         WHERE o.account_id = a.account_id AND o.confirmed_payment_id IS NOT NULL) AS paid_orders,
+       (SELECT sum(o.total_amount)
+          FROM orders o
+         WHERE o.account_id = a.account_id AND o.confirmed_payment_id IS NOT NULL) AS lifetime_spend
+FROM accounts a
+JOIN profiles p ON p.account_id = a.account_id
+WHERE a.account_type = 'user'
+  -- bought in the first quarter
+  AND a.account_id IN (SELECT o.account_id
+                         FROM orders o
+                        WHERE o.confirmed_payment_id IS NOT NULL
+                          AND o.created_at >= TIMESTAMPTZ '2025-10-01 00:00+00'
+                          AND o.created_at <  TIMESTAMPTZ '2026-01-01 00:00+00')
+  -- ...and nothing paid in the last 120 days
+  AND NOT EXISTS (SELECT 1
+                    FROM orders o
+                   WHERE o.account_id = a.account_id
+                     AND o.confirmed_payment_id IS NOT NULL
+                     AND o.created_at >= TIMESTAMPTZ '2026-10-01 00:00+00' - INTERVAL '120 days')
+ORDER BY lifetime_spend DESC;
+    username     |    customer     | first_order | last_order | paid_orders | lifetime_spend 
+-----------------+-----------------+-------------+------------+-------------+----------------
+ mira.macdonald2 | Mira MacDonald  | 2025-11-30  | 2026-04-07 |           4 |        2742.73
+ sage.bennett    | Sage Bennett    | 2025-11-29  | 2025-11-29 |           1 |        1703.32
+ mira.smith      | Mira Smith      | 2025-10-24  | 2026-05-03 |           4 |        1440.03
+ noah.singh      | Noah Singh      | 2025-11-18  | 2026-01-20 |           2 |        1310.25
+ lake.silva      | Lake Silva      | 2025-12-08  | 2025-12-26 |           2 |        1288.27
+ reese.costa     | Reese Costa     | 2025-12-07  | 2026-05-03 |           3 |        1077.68
+ finley.kim      | Finley Kim      | 2025-11-01  | 2026-05-06 |           4 |         992.65
+ skyler.kowalski | Skyler Kowalski | 2025-10-12  | 2026-02-17 |           3 |         939.79
+ jordan.fraser   | Jordan Fraser   | 2025-10-24  | 2026-02-09 |           2 |         919.42
+ hayden.haddad   | Hayden Haddad   | 2025-11-18  | 2026-05-30 |           5 |         893.59
+ iris.costa      | Iris Costa      | 2025-12-08  | 2026-05-02 |           2 |         839.13
+ sam.anderson    | Sam Anderson    | 2025-10-20  | 2025-10-20 |           1 |         792.09
+ jules.ahmed     | Jules Ahmed     | 2025-11-26  | 2025-12-28 |           2 |         785.36
+ jules.morgan    | Jules Morgan    | 2025-11-13  | 2026-02-28 |           2 |         746.18
+ taylor.martin   | Taylor Martin   | 2025-12-22  | 2026-03-02 |           2 |         660.85
+ mateo.reed      | Mateo Reed      | 2025-11-28  | 2026-02-10 |           2 |         638.81
+ quinn.martin    | Quinn Martin    | 2025-10-13  | 2026-02-01 |           3 |         555.84
+ parker.bennett  | Parker Bennett  | 2025-12-24  | 2025-12-24 |           1 |         548.89
+ sofia.cote      | Sofia Cote      | 2025-11-09  | 2026-01-16 |           3 |         487.13
+ ines.lee2       | Ines Lee        | 2025-12-30  | 2025-12-30 |           1 |         475.24
+ quinn.macdonald | Quinn MacDonald | 2025-11-22  | 2025-11-22 |           1 |         460.42
+ mira.wilson     | Mira Wilson     | 2025-12-02  | 2025-12-02 |           1 |         454.81
+ reese.chen      | Reese Chen      | 2025-10-02  | 2025-10-02 |           1 |         388.43
+ sage.lee        | Sage Lee        | 2025-11-13  | 2026-03-16 |           2 |         299.87
+ jules.brown     | Jules Brown     | 2025-12-11  | 2025-12-11 |           1 |         233.80
+ taylor.smith2   | Taylor Smith    | 2025-10-08  | 2025-10-08 |           1 |         202.18
+ kai.morgan      | Kai Morgan      | 2025-11-05  | 2025-11-05 |           1 |         157.86
+ harper.morgan   | Harper Morgan   | 2025-11-26  | 2025-11-26 |           1 |         129.29
+ hugo.singh      | Hugo Singh      | 2025-10-28  | 2025-10-28 |           1 |         114.18
+ alex.khan       | Alex Khan       | 2025-10-30  | 2025-10-30 |           1 |          91.78
+ mateo.kowalski  | Mateo Kowalski  | 2025-11-30  | 2025-11-30 |           1 |          74.40
+ ines.morgan     | Ines Morgan     | 2025-12-26  | 2025-12-26 |           1 |          63.18
+ hayden.gagnon   | Hayden Gagnon   | 2025-11-17  | 2025-11-17 |           1 |          55.63
+(33 rows)
+

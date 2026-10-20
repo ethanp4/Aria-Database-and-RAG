@@ -16,6 +16,5 @@ for f in 01_tables.sql 02_indexes.sql 03_seed.sql 04_verify_seed.sql; do
     echo "== $f"
     run -d aria_phase2 -f "$f"
 done
-# views, functions, procedures and triggers used by the query portfolio
-run -d aria_phase2 -f ../Query_Portfolio/00_portfolio_objects.sql
-echo "aria_phase2 is ready."
+echo "aria_phase2 is built. Running the query portfolio (installs views, triggers, procedure)..."
+PSQL="$PSQL" bash ../Query_Portfolio/run_portfolio.sh
