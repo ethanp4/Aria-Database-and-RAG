@@ -1,0 +1,98 @@
+{
+    "items": [
+        {
+            "sku": "GEN-REG1-04",
+            "name": "Cold-water Balanced regulator first stage",
+            "category": "Regulators & Air",
+            "quantity": 1,
+            "line_total": 461.18,
+            "unit_price": 461.18
+        },
+        {
+            "sku": "GEN-REEL-05",
+            "name": "Warm-water Dive reel with line",
+            "category": "Safety & Surface Gear",
+            "quantity": 1,
+            "line_total": 76.95,
+            "unit_price": 76.95
+        },
+        {
+            "sku": "GEN-COMPASS-10",
+            "name": "Deluxe Underwater compass",
+            "category": "Dive Computers & Instruments",
+            "quantity": 2,
+            "line_total": 293.88,
+            "unit_price": 146.94
+        },
+        {
+            "sku": "GEN-SNORK-04",
+            "name": "Cold-water Purge snorkel",
+            "category": "Masks & Snorkels",
+            "quantity": 1,
+            "line_total": 42.95,
+            "unit_price": 42.95
+        }
+    ],
+    "status": "DELIVERED",
+    "totals": {
+        "tax": 116.34,
+        "total": 1011.30,
+        "currency": "CAD",
+        "shipping": 20.00,
+        "subtotal": 874.96
+    },
+    "contact": {
+        "name": "Nora Chen",
+        "email": null
+    },
+    "payment": {
+        "type": "card",
+        "brand": "Visa",
+        "last4": "6679",
+        "method": "CREDIT_CARD",
+        "status": "CAPTURED"
+    },
+    "refunds": [
+        {
+            "amount": 42.95,
+            "reason": "Item arrived damaged",
+            "status": "COMPLETED",
+            "refund_id": 92,
+            "requested_at": "2026-07-16T23:54:48+00:00"
+        }
+    ],
+    "customer": {
+        "username": "nora.chen",
+        "account_id": 119
+    },
+    "order_id": 321,
+    "shipment": {
+        "method": "EXPRESS",
+        "carrier": "Canada Post",
+        "shipped_at": "2026-06-21T05:54:48+00:00",
+        "delivered_at": "2026-06-26T12:54:48+00:00",
+        "tracking_url": "https://www.canadapost-postescanada.ca/track?pin=8238561240187634",
+        "tracking_number": "8238561240187634"
+    },
+    "created_at": "2026-06-19T13:54:31+00:00",
+    "confirmed_at": "2026-06-19T13:54:48+00:00",
+    "schema_version": 1,
+    "billing_address": {
+        "city": "Ottawa",
+        "kind": "billing",
+        "line1": "243 Saltwater Blvd",
+        "line2": null,
+        "region": "ON",
+        "country": "CA",
+        "postal_code": "K1P 1V1"
+    },
+    "shipping_address": {
+        "city": "Ottawa",
+        "kind": "shipping",
+        "line1": "243 Saltwater Blvd",
+        "line2": null,
+        "region": "ON",
+        "country": "CA",
+        "postal_code": "K1P 1V1"
+    }
+}

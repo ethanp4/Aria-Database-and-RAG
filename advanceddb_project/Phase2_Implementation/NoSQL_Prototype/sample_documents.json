@@ -1,0 +1,117 @@
+[
+  {
+    "id": "rev-0002",
+    "product": {
+      "sku": "GEN-CUTTER-07",
+      "name": "Expedition Dive line cutter",
+      "category": "Safety & Surface Gear"
+    },
+    "author": {
+      "account_id": 152,
+      "username": "ocean.stewart",
+      "verified_purchase": true
+    },
+    "order_id": 213,
+    "rating": 4,
+    "ratings": {
+      "quality": 4,
+      "value": 5
+    },
+    "title": "Would buy again",
+    "body": "The expedition dive line cutter has worked well over 27 dives. Held up fine in single-digit water. Good on rocky shore entries. Good value for the price.",
+    "tags": [
+      "cold-water",
+      "shore-entry",
+      "value"
+    ],
+    "photos": [
+      {
+        "url": "https://example.test/review-photos/rev-0002-1.jpg",
+        "caption": "After the dive"
+      }
+    ],
+    "helpful_votes": 1,
+    "status": "published",
+    "created_at": "2026-05-06T11:12:49+00:00",
+    "dive_context": {
+      "site": "Whytecliff Park, BC",
+      "water_temp_c": 8,
+      "max_depth_m": 30
+    },
+    "replies": [
+      {
+        "id": "reply-1",
+        "author_role": "customer",
+        "author": "zara.singh",
+        "body": "Did you try it in colder water? Thinking of buying one.",
+        "created_at": "2026-05-12T11:12:49+00:00"
+      },
+      {
+        "id": "reply-2",
+        "author_role": "customer",
+        "author": "jules.taylor",
+        "body": "Did you try it in colder water? Thinking of buying one.",
+        "created_at": "2026-05-15T11:12:49+00:00"
+      }
+    ]
+  },
+  {
+    "id": "rev-0006",
+    "product": {
+      "sku": "GEN-MASK-06",
+      "name": "Compact Low-volume dive mask",
+      "category": "Masks & Snorkels"
+    },
+    "author": {
+      "account_id": 162,
+      "username": "felix.lee",
+      "verified_purchase": true
+    },
+    "order_id": 73,
+    "rating": 5,
+    "ratings": {
+      "quality": 5,
+      "value": 4,
+      "fit": 3
+    },
+    "title": "Worth every dollar",
+    "body": "Used the compact low-volume dive mask on 24 dives so far and it has been excellent. Needed defog every time.",
+    "tags": [
+      "fogging"
+    ],
+    "photos": [
+      {
+        "url": "https://example.test/review-photos/rev-0006-1.jpg",
+        "caption": "Close-up"
+      },
+      {
+        "url": "https://example.test/review-photos/rev-0006-2.jpg",
+        "caption": "Out of the box"
+      }
+    ],
+    "helpful_votes": 1,
+    "status": "published",
+    "created_at": "2025-12-16T01:04:13+00:00",
+    "dive_context": {
+      "site": "Brockville, ON",
+      "water_temp_c": 14,
+      "max_depth_m": 24
+    },
+    "replies": [
+      {
+        "id": "reply-1",
+        "author_role": "staff",
+        "author": "staff04",
+        "body": "Sorry to hear this. Our returns team can help within 30 days of delivery; reply here or contact support.",
+        "created_at": "2025-12-26T01:04:13+00:00"
+      },
+      {
+        "id": "reply-2",
+        "author_role": "customer",
+        "author": "leila.macdonald",
+        "body": "Did you try it in colder water? Thinking of buying one.",
+        "created_at": "2025-12-27T01:04:13+00:00"
+      }
+    ]
+  }
+]

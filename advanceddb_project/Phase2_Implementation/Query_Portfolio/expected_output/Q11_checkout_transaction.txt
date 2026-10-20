@@ -1,0 +1,78 @@
+BEGIN ISOLATION LEVEL READ COMMITTED;
+BEGIN
+INSERT INTO orders (order_id, account_id, contact_name, ship_line1, ship_city, ship_region,
+                    ship_postal_code, ship_country, bill_line1, bill_city, bill_region,
+                    bill_postal_code, bill_country, shipping_method, subtotal, shipping_cost,
+                    tax_amount, total_amount, checkout_token)
+VALUES (900101, 2, 'Demo Customer', '22 Tide Way', 'Halifax', 'NS', 'B3J 2K9', 'CA',
+        '22 Tide Way', 'Halifax', 'NS', 'B3J 2K9', 'CA', 'EXPRESS',
+        113.95, 20.00, 18.75, 152.70, '00000000-0000-4000-8000-000000900101');
+INSERT 0 1
+INSERT INTO order_items (order_id, product_id, quantity, unit_price, line_total)
+SELECT 900101, product_id, 1, 74.95, 74.95 FROM products WHERE sku = 'MASK-001'
+UNION ALL
+SELECT 900101, product_id, 1, 39.00, 39.00 FROM products WHERE sku = 'REEL-001';
+INSERT 0 2
+SELECT product_id, sku, stock_quantity
+FROM products
+WHERE sku IN ('MASK-001', 'REEL-001')
+ORDER BY product_id
+FOR UPDATE;
+ product_id |   sku    | stock_quantity 
+------------+----------+----------------
+          1 | MASK-001 |             14
+         27 | REEL-001 |             28
+(2 rows)
+
+SAVEPOINT before_replay;
+SAVEPOINT
+INSERT INTO orders (account_id, contact_name, ship_line1, ship_city, ship_region,
+                    ship_postal_code, ship_country, bill_line1, bill_city, bill_region,
+                    bill_postal_code, bill_country, shipping_method, subtotal, shipping_cost,
+                    tax_amount, total_amount, checkout_token)
+VALUES (2, 'Demo Customer', '22 Tide Way', 'Halifax', 'NS', 'B3J 2K9', 'CA',
+        '22 Tide Way', 'Halifax', 'NS', 'B3J 2K9', 'CA', 'EXPRESS',
+        113.95, 20.00, 18.75, 152.70, '00000000-0000-4000-8000-000000900101');
+psql:Q11_checkout_transaction.sql:43: ERROR:  duplicate key value violates unique constraint "orders_checkout_token_unique"
+DETAIL:  Key (checkout_token)=(00000000-0000-4000-8000-000000900101) already exists.
+ROLLBACK TO SAVEPOINT before_replay;
+ROLLBACK
+SAVEPOINT before_confirm;
+SAVEPOINT
+UPDATE orders SET status = 'CONFIRMED', confirmed_at = now() WHERE order_id = 900101;
+psql:Q11_checkout_transaction.sql:49: ERROR:  new row for relation "orders" violates check constraint "orders_confirmed_requires_payment"
+DETAIL:  Failing row contains (900101, 2, CONFIRMED, Demo Customer, null, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, 22 Tide Way, null, Halifax, NS, B3J 2K9, CA, EXPRESS, 113.95, 20.00, 18.75, 152.70, 00000000-0000-4000-8000-000000900101, null, null, null, null, 2026-10-20 04:48:17.475458+00, 2026-10-20 04:48:17.475458+00, 2026-10-20 04:48:17.475458+00, null, null).
+ROLLBACK TO SAVEPOINT before_confirm;
+ROLLBACK
+INSERT INTO payments (payment_id, order_id, amount, method_type, token, last4, card_brand, status, gateway_ref)
+VALUES (900101, 900101, 152.70, 'CREDIT_CARD', 'tok_fake_demo0101', '4444', 'Mastercard', 'CAPTURED', 'fake_ch_demo0101');
+INSERT 0 1
+UPDATE orders
+   SET status = 'CONFIRMED', confirmed_payment_id = 900101, confirmed_at = now()
+ WHERE order_id = 900101;
+UPDATE 1
+SELECT order_id, status, total_amount, payment, payment_status, item_lines
+FROM v_order_summary WHERE order_id = 900101;
+ order_id |  status   | total_amount |       payment        | payment_status | item_lines 
+----------+-----------+--------------+----------------------+----------------+------------
+   900101 | CONFIRMED |       152.70 | Mastercard **** 4444 | CAPTURED       |          2
+(1 row)
+
+SELECT p.sku, p.stock_quantity, m.change_qty, m.reason
+FROM inventory_movements m JOIN products p ON p.product_id = m.product_id
+WHERE m.reference_order_id = 900101
+ORDER BY p.sku;
+   sku    | stock_quantity | change_qty | reason 
+----------+----------------+------------+--------
+ MASK-001 |             13 |         -1 | SALE
+ REEL-001 |             27 |         -1 | SALE
+(2 rows)
+
+ROLLBACK;
+ROLLBACK
+SELECT count(*) AS demo_orders_left FROM orders WHERE order_id = 900101;
+ demo_orders_left 
+------------------
+                0
+(1 row)
+

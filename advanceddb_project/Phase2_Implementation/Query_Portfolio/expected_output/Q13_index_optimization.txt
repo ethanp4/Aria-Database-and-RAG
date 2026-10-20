@@ -1,0 +1,62 @@
+DROP TABLE IF EXISTS orders_at_scale;
+psql:Q13_index_optimization.sql:12: NOTICE:  table "orders_at_scale" does not exist, skipping
+DROP TABLE
+CREATE TEMP TABLE orders_at_scale AS
+SELECT g                                                     AS order_id,
+       (g * 7919) % 50000 + 1                                AS account_id,   -- spread over 50k customers
+       TIMESTAMPTZ '2026-09-01 00:00+00' + g * INTERVAL '2.6 seconds' AS created_at,
+       ((g * 104729) % 90000) / 100.0 + 10                   AS total_amount
+FROM generate_series(1::bigint, 1000000) AS g;
+SELECT 1000000
+ANALYZE orders_at_scale;
+ANALYZE
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY ON)
+SELECT order_id, created_at, total_amount
+FROM orders_at_scale
+WHERE account_id = 4242
+ORDER BY created_at DESC
+LIMIT 10;
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Limit (actual time=56.613..56.615 rows=10.00 loops=1)
+   Buffers: local read=7360 written=1017
+   ->  Sort (actual time=56.611..56.612 rows=10.00 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: local read=7360 written=1017
+         ->  Seq Scan on orders_at_scale (actual time=4.543..56.583 rows=20.00 loops=1)
+               Filter: (account_id = 4242)
+               Rows Removed by Filter: 999980
+               Buffers: local read=7360 written=1017
+ Planning:
+   Buffers: shared hit=33
+ Planning Time: 5.115 ms
+ Execution Time: 56.634 ms
+(14 rows)
+
+CREATE INDEX ON orders_at_scale (account_id, created_at DESC);
+CREATE INDEX
+ANALYZE orders_at_scale;
+ANALYZE
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY ON)
+SELECT order_id, created_at, total_amount
+FROM orders_at_scale
+WHERE account_id = 4242
+ORDER BY created_at DESC
+LIMIT 10;
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.035..0.090 rows=10.00 loops=1)
+   Buffers: shared hit=3, local hit=3 read=11
+   ->  Index Scan using orders_at_scale_account_id_created_at_idx on orders_at_scale (actual time=0.034..0.088 rows=10.00 loops=1)
+         Index Cond: (account_id = 4242)
+         Index Searches: 1
+         Buffers: shared hit=3, local hit=3 read=11
+ Planning:
+   Buffers: shared hit=28, local read=1
+ Planning Time: 0.146 ms
+ Execution Time: 0.100 ms
+(10 rows)
+
+DROP TABLE orders_at_scale;
+DROP TABLE

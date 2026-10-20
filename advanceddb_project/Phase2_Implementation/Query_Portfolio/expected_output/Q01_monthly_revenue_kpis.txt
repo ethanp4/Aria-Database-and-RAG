@@ -1,0 +1,47 @@
+WITH monthly_sales AS (
+    SELECT date_trunc('month', o.confirmed_at) AS month,
+           count(*)                            AS orders,
+           sum(o.subtotal)                     AS merchandise,
+           sum(o.total_amount)                 AS gross_revenue
+    FROM orders o
+    WHERE o.confirmed_payment_id IS NOT NULL
+    GROUP BY 1
+),
+monthly_refunds AS (
+    SELECT date_trunc('month', r.resolved_at) AS month,
+           count(*)                           AS refunds,
+           sum(r.amount)                      AS refunded
+    FROM refunds r
+    WHERE r.status = 'COMPLETED'
+    GROUP BY 1
+)
+SELECT to_char(s.month, 'YYYY-MM')                          AS month,
+       s.orders,
+       s.merchandise,
+       s.gross_revenue,
+       COALESCE(r.refunded, 0)                               AS refunded,
+       s.gross_revenue - COALESCE(r.refunded, 0)             AS net_revenue,
+       round(s.gross_revenue / s.orders, 2)                  AS avg_order_value,
+       round(100.0 * COALESCE(r.refunded, 0) / s.gross_revenue, 1) AS refund_pct,
+       round(100.0 * (s.gross_revenue - lag(s.gross_revenue) OVER w)
+                   / lag(s.gross_revenue) OVER w, 1)         AS gross_growth_pct
+FROM monthly_sales s
+LEFT JOIN monthly_refunds r ON r.month = s.month
+WINDOW w AS (ORDER BY s.month)
+ORDER BY s.month;
+  month  | orders | merchandise | gross_revenue | refunded | net_revenue | avg_order_value | refund_pct | gross_growth_pct 
+---------+--------+-------------+---------------+----------+-------------+-----------------+------------+------------------
+ 2025-10 |     30 |    10691.96 |      12053.25 |   340.24 |    11713.01 |          401.78 |        2.8 |                 
+ 2025-11 |     35 |     9316.27 |      10650.48 |  2280.28 |     8370.20 |          304.30 |       21.4 |            -11.6
+ 2025-12 |     45 |    16829.41 |      19328.99 |  3892.19 |    15436.80 |          429.53 |       20.1 |             81.5
+ 2026-01 |     32 |    13908.68 |      15813.22 |  2640.06 |    13173.16 |          494.16 |       16.7 |            -18.2
+ 2026-02 |     26 |     8984.76 |      10210.96 |   734.54 |     9476.42 |          392.73 |        7.2 |            -35.4
+ 2026-03 |     26 |     6862.54 |       7937.46 |  2489.19 |     5448.27 |          305.29 |       31.4 |            -22.3
+ 2026-04 |     31 |    13419.80 |      14914.12 |   760.92 |    14153.20 |          481.10 |        5.1 |             87.9
+ 2026-05 |     48 |    14318.64 |      16450.94 |  2926.92 |    13524.02 |          342.73 |       17.8 |             10.3
+ 2026-06 |     40 |    15822.46 |      17902.54 |  1296.51 |    16606.03 |          447.56 |        7.2 |              8.8
+ 2026-07 |     59 |    23570.48 |      26671.98 |  1599.86 |    25072.12 |          452.07 |        6.0 |             49.0
+ 2026-08 |     33 |    11976.97 |      13605.26 |  4690.88 |     8914.38 |          412.28 |       34.5 |            -49.0
+ 2026-09 |     29 |    14379.39 |      16129.00 |   870.17 |    15258.83 |          556.17 |        5.4 |             18.5
+(12 rows)
+

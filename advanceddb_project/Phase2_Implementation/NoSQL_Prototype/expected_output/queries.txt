@@ -1,0 +1,22 @@
+[firestore] emulator at 127.0.0.1:8080, project demo-aria
+
+F1  Published 4-5 star reviews of GEN-GLOVE-09, newest first
+    rev-0028  5*  2026-09-19  Five stars, no notes
+    rev-0057  5*  2026-03-10  Worth every dollar
+
+F2  Most helpful reviews tagged "cold-water"
+    rev-0058   8 votes  Professional Neoprene dive gloves
+    rev-0048   8 votes  Cold-water Neoprene dive gloves
+    rev-0033   5 votes  Recreational Neoprene dive hood
+    rev-0014   5 votes  Compact Surface marker buoy
+    rev-0060   3 votes  Rechargeable dive torch
+
+F3  Aggregates for GEN-GLOVE-09
+    3 reviews, average 4.00 stars
+    whole collection: 60 reviews, 9 rated 1-2 stars
+
+F4  Staff replies across all reviews (collection group)
+    19 staff replies; first three:
+    rev-0001/reply-1  staff02: Glad it is working well for you. Remember to rinse it in fre
+    rev-0006/reply-1  staff04: Sorry to hear this. Our returns team can help within 30 days
+    rev-0009/reply-1  staff01: Sorry to hear this. Our returns team can help within 30 days

@@ -1,0 +1,4 @@
+[firestore] emulator at 127.0.0.1:8080, project demo-aria
+deleted 120 documents
+wrote 60 reviews and 60 replies to "reviews"
+"reviews" now holds 60 documents
