@@ -124,15 +124,15 @@ BEGIN
                         'aaaaaaaa-0000-4000-8000-000000000002', t.account_id, refund_id, outcome);
     RAISE NOTICE 'new request, 1 open  -> refund %, %', refund_id, outcome;
 END $$;
-psql:Q10_stored_procedure_refund.sql:141: NOTICE:  1st click            -> refund 138, CREATED
-psql:Q10_stored_procedure_refund.sql:141: NOTICE:  retry, same key      -> refund 138, DUPLICATE: returned existing refund
-psql:Q10_stored_procedure_refund.sql:141: NOTICE:  new request, 1 open  -> refund 138, REJECTED: an open refund already exists
+psql:Q10_stored_procedure_refund.sql:141: NOTICE:  1st click            -> refund 139, CREATED
+psql:Q10_stored_procedure_refund.sql:141: NOTICE:  retry, same key      -> refund 139, DUPLICATE: returned existing refund
+psql:Q10_stored_procedure_refund.sql:141: NOTICE:  new request, 1 open  -> refund 139, REJECTED: an open refund already exists
 DO
 SELECT refund_id, order_id, amount, status, risk_score
 FROM refunds WHERE order_id = (SELECT order_id FROM demo_target);
  refund_id | order_id | amount |  status   | risk_score 
 -----------+----------+--------+-----------+------------
-       138 |      475 |  20.00 | REQUESTED |       6.72
+       139 |      475 |  20.00 | REQUESTED |       6.72
 (1 row)
 
 SELECT attempt_id, order_id, existing_refund_id, attempt_reason, reviewed_at
@@ -140,8 +140,8 @@ FROM duplicate_refund_attempts WHERE order_id = (SELECT order_id FROM demo_targe
 ORDER BY attempt_id;
  attempt_id | order_id | existing_refund_id |   attempt_reason   | reviewed_at 
 ------------+----------+--------------------+--------------------+-------------
-         18 |      475 |                138 | SAME_KEY           | 
-         19 |      475 |                138 | OPEN_REFUND_EXISTS | 
+         21 |      475 |                139 | SAME_KEY           | 
+         22 |      475 |                139 | OPEN_REFUND_EXISTS | 
 (2 rows)
 
 UPDATE refunds SET status = 'COMPLETED', resolved_at = now(),
@@ -166,9 +166,9 @@ FROM duplicate_refund_attempts WHERE order_id = (SELECT order_id FROM demo_targe
 ORDER BY attempt_id;
  attempt_id | existing_refund_id |   attempt_reason    
 ------------+--------------------+---------------------
-         18 |                138 | SAME_KEY
-         19 |                138 | OPEN_REFUND_EXISTS
-         20 |                    | EXCEEDS_ORDER_TOTAL
+         21 |                139 | SAME_KEY
+         22 |                139 | OPEN_REFUND_EXISTS
+         23 |                    | EXCEEDS_ORDER_TOTAL
 (3 rows)
 
 ROLLBACK;

@@ -14,7 +14,10 @@ if (-not $psql) {
 
 function Invoke-Psql([string]$Database, [string]$File) {
     Write-Host "== $File"
-    & $psql -X -q -v ON_ERROR_STOP=1 -d $Database -f $File
+    # psql prints NOTICEs on stderr; Windows PowerShell would treat those as errors under
+    # 'Stop', so judge success by psql's exit code (ON_ERROR_STOP makes it non-zero on failure).
+    $ErrorActionPreference = 'Continue'
+    & $psql -X -q -v ON_ERROR_STOP=1 -d $Database -f $File 2>&1 | ForEach-Object { "$_" }
     if ($LASTEXITCODE -ne 0) { throw "psql failed on $File" }
 }
 
