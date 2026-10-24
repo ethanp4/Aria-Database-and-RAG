@@ -3,7 +3,7 @@
 -- cross-table checks that a CHECK constraint can't express. Every check must return 0;
 -- the DO block at the end raises an error (and stops run_all) if any check fails.
 
-\echo 'Row counts'
+-- \echo 'Row counts'
 SELECT 'accounts' AS table_name, count(*) AS row_count FROM accounts
 UNION ALL SELECT 'profiles', count(*) FROM profiles
 UNION ALL SELECT 'addresses', count(*) FROM addresses
@@ -21,7 +21,7 @@ UNION ALL SELECT 'accounts_receivable', count(*) FROM accounts_receivable
 UNION ALL SELECT 'accounts_payable', count(*) FROM accounts_payable
 UNION ALL SELECT 'policy_documents', count(*) FROM policy_documents;
 
-\echo 'Integrity checks (every violations value must be 0)'
+-- \echo 'Integrity checks (every violations value must be 0)'
 CREATE TEMP VIEW seed_checks AS
 -- stock on hand equals the sum of its movement history
 SELECT 'stock = sum(movements)' AS check_name, count(*) AS violations

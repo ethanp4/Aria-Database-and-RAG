@@ -32,6 +32,152 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'Sample product')
 
 
+class DashboardPaginationTests(TestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name='Gear')
+        for i in range(45):
+            Product.objects.create(
+                sku=f'P-{i:02d}', name=f'Product {i:02d}', unit_price='10.00', category=self.category,
+            )
+        for i in range(25):
+            Category.objects.create(name=f'Category {i:02d}')
+        self.log_in('admin')
+
+    def log_in(self, account_type):
+        account = Account.objects.create(
+            username=f'dash-{account_type}', password_hash='hash', account_type=account_type,
+        )
+        session = self.client.session
+        session['account_id'] = account.account_id
+        session.save()
+
+    def test_products_are_paginated_20_per_page(self):
+        response = self.client.get(reverse('products:dashboard'))
+
+        page_obj = response.context['product_pages']['page_obj']
+        self.assertEqual(len(response.context['products']), 20)
+        self.assertEqual(page_obj.paginator.num_pages, 3)
+        self.assertEqual(response.context['product_count'], 45)
+        self.assertContains(response, 'Product 00')
+        self.assertNotContains(response, 'Product 20')
+
+    def test_last_product_page_shows_remaining_products(self):
+        response = self.client.get(reverse('products:dashboard'), {'products_page': 3})
+
+        names = [p.name for p in response.context['products']]
+        self.assertEqual(names, [f'Product {i}' for i in range(40, 45)])
+
+    def test_tables_page_independently(self):
+        response = self.client.get(
+            reverse('products:dashboard'), {'products_page': 2, 'categories_page': 3},
+        )
+
+        self.assertEqual(response.context['product_pages']['page_obj'].number, 2)
+        self.assertEqual(response.context['category_pages']['page_obj'].number, 3)
+        # 26 categories in total (Gear + 25), so page 3 holds the last 6
+        self.assertEqual(len(response.context['categories']), 6)
+        self.assertEqual(response.context['category_count'], 26)
+
+    def test_page_links_keep_other_tables_page(self):
+        response = self.client.get(
+            reverse('products:dashboard'), {'products_page': 2, 'categories_page': 3},
+        )
+
+        self.assertContains(response, 'href="?categories_page=3&amp;products_page=3#products-heading"')
+        self.assertContains(response, 'href="?products_page=2&amp;categories_page=2#categories"')
+
+    def test_invalid_or_out_of_range_page_falls_back(self):
+        not_a_number = self.client.get(reverse('products:dashboard'), {'products_page': 'abc'})
+        too_high = self.client.get(reverse('products:dashboard'), {'products_page': 999})
+
+        self.assertEqual(not_a_number.context['product_pages']['page_obj'].number, 1)
+        self.assertEqual(too_high.context['product_pages']['page_obj'].number, 3)
+
+    def test_single_page_table_has_no_pager(self):
+        response = self.client.get(reverse('products:dashboard'))
+
+        self.assertNotContains(response, 'aria-label="Profile pages"')
+        self.assertContains(response, 'aria-label="Product pages"')
+
+    def test_paginated_dashboard_still_admin_only(self):
+        for account_type in ('user', 'staff'):
+            self.log_in(account_type)
+            response = self.client.get(
+                reverse('products:dashboard'), {'products_page': 2, 'products_sort': '-price'},
+            )
+            self.assertEqual(response.status_code, 403)
+
+    def names(self, response, table='products'):
+        return [obj.name for obj in response.context[table]]
+
+    def test_products_sort_by_price_both_directions(self):
+        Product.objects.filter(sku='P-07').update(unit_price='99.00')
+        Product.objects.filter(sku='P-03').update(unit_price='1.00')
+
+        cheapest = self.client.get(reverse('products:dashboard'), {'products_sort': 'price'})
+        priciest = self.client.get(reverse('products:dashboard'), {'products_sort': '-price'})
+
+        self.assertEqual(self.names(cheapest)[0], 'Product 03')
+        self.assertEqual(self.names(priciest)[0], 'Product 07')
+
+    def test_sort_is_applied_across_pages(self):
+        first = self.client.get(reverse('products:dashboard'), {'products_sort': '-name'})
+        last = self.client.get(
+            reverse('products:dashboard'), {'products_sort': '-name', 'products_page': 3},
+        )
+
+        self.assertEqual(self.names(first)[0], 'Product 44')
+        self.assertEqual(self.names(last), [f'Product {i:02d}' for i in range(4, -1, -1)])
+
+    def test_unknown_sort_falls_back_to_default(self):
+        response = self.client.get(
+            reverse('products:dashboard'), {'products_sort': 'password_hash'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.names(response)[0], 'Product 00')
+
+    def test_header_link_toggles_direction_and_resets_page(self):
+        response = self.client.get(
+            reverse('products:dashboard'),
+            {'products_sort': 'price', 'products_page': 2, 'categories_page': 3},
+        )
+
+        price = response.context['product_pages']['sort_links']['price']
+        stock = response.context['product_pages']['sort_links']['stock']
+        self.assertEqual(price['direction'], 'asc')
+        self.assertIn('products_sort=-price', price['url'])
+        self.assertNotIn('products_page', price['url'])
+        self.assertIn('categories_page=3', price['url'])
+        self.assertIsNone(stock['direction'])
+        self.assertContains(response, 'aria-sort="ascending"')
+
+    def test_tables_sort_independently(self):
+        response = self.client.get(
+            reverse('products:dashboard'), {'products_sort': '-name', 'categories_sort': '-name'},
+        )
+
+        self.assertEqual(self.names(response)[0], 'Product 44')
+        self.assertEqual(self.names(response, 'categories')[0], 'Gear')
+        # page links for categories keep the products sort
+        self.assertIn('products_sort=-name', response.context['category_pages']['query_string'])
+
+    def test_categories_sort_by_product_count(self):
+        response = self.client.get(reverse('products:dashboard'), {'categories_sort': '-products'})
+
+        self.assertEqual(self.names(response, 'categories')[0], 'Gear')
+
+    def test_movements_default_to_newest_first(self):
+        product = Product.objects.get(sku='P-00')
+        InventoryMovement.objects.create(product=product, change_qty=5, reason=InventoryMovement.Reason.RESTOCK)
+        newest = InventoryMovement.objects.create(product=product, change_qty=-1, reason=InventoryMovement.Reason.ADJUSTMENT)
+
+        response = self.client.get(reverse('products:dashboard'))
+
+        self.assertEqual(response.context['inventory_movements'][0].pk, newest.pk)
+        self.assertEqual(response.context['movement_pages']['sort_links']['date']['direction'], 'desc')
+
+
 class BrowseViewTests(TestCase):
     def setUp(self):
         self.drinkware = Category.objects.create(name='Drinkware')

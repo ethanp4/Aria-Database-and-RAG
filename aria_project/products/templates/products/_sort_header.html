@@ -1,0 +1,10 @@
+{% comment %}
+sortable column header for a dashboard table
+usage: {% include "products/_sort_header.html" with link=product_pages.sort_links.name label="Product" anchor="products-heading" %}
+link comes from paginate() in products/views.py
+{% endcomment %}
+<th scope="col"{% if link.direction == 'asc' %} aria-sort="ascending"{% elif link.direction == 'desc' %} aria-sort="descending"{% endif %}>
+    <a class="link-body-emphasis text-decoration-none text-nowrap" href="{{ link.url }}#{{ anchor }}">
+        {{ label }}{% if link.direction == 'asc' %} <span aria-hidden="true">&#9650;</span>{% elif link.direction == 'desc' %} <span aria-hidden="true">&#9660;</span>{% endif %}
+    </a>
+</th>

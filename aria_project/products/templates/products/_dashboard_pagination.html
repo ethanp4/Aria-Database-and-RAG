@@ -1,0 +1,46 @@
+{% comment %}
+pager for one dashboard table
+usage: {% include "products/_dashboard_pagination.html" with pages=product_pages anchor="products-heading" label="Product pages" %}
+pages comes from paginate() in products/views.py; anchor keeps the page scrolled to this table
+{% endcomment %}
+{% with page_obj=pages.page_obj query=pages.query_string param=pages.param %}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-2 mb-4" aria-label="{{ label }}">
+    <ul class="pagination pagination-sm justify-content-center flex-wrap">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ query }}{% if query %}&amp;{% endif %}{{ param }}=1#{{ anchor }}" aria-label="First page">&laquo;</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{{ query }}{% if query %}&amp;{% endif %}{{ param }}={{ page_obj.previous_page_number }}#{{ anchor }}" aria-label="Previous page">&lsaquo;</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        <li class="page-item disabled"><span class="page-link">&lsaquo;</span></li>
+        {% endif %}
+
+        {% for page in pages.page_range %}
+            {% if page_obj.number == page %}
+            <li class="page-item active" aria-current="page"><span class="page-link">{{ page }}</span></li>
+            {% else %}
+            <li class="page-item">
+                <a class="page-link" href="?{{ query }}{% if query %}&amp;{% endif %}{{ param }}={{ page }}#{{ anchor }}">{{ page }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ query }}{% if query %}&amp;{% endif %}{{ param }}={{ page_obj.next_page_number }}#{{ anchor }}" aria-label="Next page">&rsaquo;</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{{ query }}{% if query %}&amp;{% endif %}{{ param }}={{ page_obj.paginator.num_pages }}#{{ anchor }}" aria-label="Last page">&raquo;</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">&rsaquo;</span></li>
+        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endwith %}

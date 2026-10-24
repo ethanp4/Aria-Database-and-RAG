@@ -1,3 +1,4 @@
+-- Active: 1792805854850@@127.0.0.1@5433@aria_phase2
 -- Aria Phase 2: tables, keys and constraints.
 -- Run while connected to aria_phase2.
 --

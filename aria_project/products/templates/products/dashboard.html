@@ -55,12 +55,12 @@
                 <caption class="visually-hidden">Products with price, stock, status, and edit actions</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Product</th>
-                        <th scope="col">SKU</th>
-                        <th scope="col">Price</th>
-                        <th scope="col">Stock</th>
-                        <th scope="col">Category</th>
-                        <th scope="col">Status</th>
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.name label="Product" anchor="products-heading" %}
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.sku label="SKU" anchor="products-heading" %}
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.price label="Price" anchor="products-heading" %}
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.stock label="Stock" anchor="products-heading" %}
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.category label="Category" anchor="products-heading" %}
+                        {% include "products/_sort_header.html" with link=product_pages.sort_links.status label="Status" anchor="products-heading" %}
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
@@ -87,6 +87,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "products/_dashboard_pagination.html" with pages=product_pages anchor="products-heading" label="Product pages" %}
         {% else %}
         <div class="card border-0 bg-body-tertiary">
             <div class="card-body py-4 text-center">
@@ -111,9 +112,9 @@
                 <caption class="visually-hidden">Categories with name, description, and edit actions</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Category</th>
+                        {% include "products/_sort_header.html" with link=category_pages.sort_links.name label="Category" anchor="categories" %}
                         <th scope="col">Description</th>
-                        <th scope="col">Product Count</th>
+                        {% include "products/_sort_header.html" with link=category_pages.sort_links.products label="Product Count" anchor="categories" %}
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
@@ -131,6 +132,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "products/_dashboard_pagination.html" with pages=category_pages anchor="categories" label="Category pages" %}
         {% else %}
         <div class="card border-0 bg-body-tertiary">
             <div class="card-body py-4 text-center">
@@ -154,10 +156,10 @@
                 <caption class="visually-hidden">Inventory movements with product, quantity, reason, and timestamp</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Product</th>
-                        <th scope="col">Quantity</th>
-                        <th scope="col">Reason</th>
-                        <th scope="col">Timestamp</th>
+                        {% include "products/_sort_header.html" with link=movement_pages.sort_links.product label="Product" anchor="inventory-movements" %}
+                        {% include "products/_sort_header.html" with link=movement_pages.sort_links.qty label="Quantity" anchor="inventory-movements" %}
+                        {% include "products/_sort_header.html" with link=movement_pages.sort_links.reason label="Reason" anchor="inventory-movements" %}
+                        {% include "products/_sort_header.html" with link=movement_pages.sort_links.date label="Timestamp" anchor="inventory-movements" %}
                     </tr>
                 </thead>
                 <tbody>
@@ -172,6 +174,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "products/_dashboard_pagination.html" with pages=movement_pages anchor="inventory-movements" label="Inventory movement pages" %}
         {% else %}
         <div class="card border-0 bg-body-tertiary">
             <div class="card-body py-4 text-center">
@@ -195,14 +198,14 @@
                 <caption class="visually-hidden">Profiles with user, email, and edit actions</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Username</th>
-                        <th scope="col">First Name</th>
-                        <th scope="col">Last Name</th>
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.username label="Username" anchor="profiles" %}
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.first label="First Name" anchor="profiles" %}
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.last label="Last Name" anchor="profiles" %}
                         <th scope="col">Phone Number</th>
-                        <th scope="col">Email</th>
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.email label="Email" anchor="profiles" %}
                         <th scope="col">Address count</th>
-                        <th scope="col">Created at</th>
-                        <th scope="col">Updated at</th>
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.created label="Created at" anchor="profiles" %}
+                        {% include "products/_sort_header.html" with link=profile_pages.sort_links.updated label="Updated at" anchor="profiles" %}
                         <th scope="col"><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
@@ -225,6 +228,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "products/_dashboard_pagination.html" with pages=profile_pages anchor="profiles" label="Profile pages" %}
         {% else %}
         <div class="card border-0 bg-body-tertiary">
             <div class="card-body py-4 text-center">
