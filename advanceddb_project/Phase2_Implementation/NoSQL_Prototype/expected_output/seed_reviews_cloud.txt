@@ -1,0 +1,4 @@
+[firestore] Cloud Firestore project aria-database-ecom
+deleted 0 documents
+wrote 60 reviews and 60 replies to "reviews"
+"reviews" now holds 60 documents
