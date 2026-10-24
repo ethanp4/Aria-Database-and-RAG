@@ -1,0 +1,13 @@
+[firestore] Cloud Firestore project aria-database-ecom
+CREATE  reviews/rev-demo
+READ    rev-demo ->
+{'helpful_votes': 0,
+ 'product': {'category': 'Masks & Snorkels',
+             'name': 'Low-volume dive mask',
+             'sku': 'MASK-001'},
+ 'rating': 4,
+ 'ratings': {'fit': 5, 'quality': 4, 'value': 4},
+ 'tags': ['fit', 'fogging']}
+UPDATE  ratings.value = 5 | tags = ['fit', 'fogging', 'travel'] | helpful_votes = 1
+        replies: ['Thanks! A drop of defog before each dive fixes the fogging.']
+DELETE  reviews/rev-demo exists afterwards? False | replies left: 0
