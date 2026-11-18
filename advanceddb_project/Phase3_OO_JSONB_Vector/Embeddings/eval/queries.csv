@@ -1,0 +1,10 @@
+query_id,query_text,relevant_topic,polarity,relevant_types,purpose
+S1,my mask keeps steaming up so I can't see anything underwater,fogging,neg,mask,semantic search
+S2,my wetsuit wasn't warm enough and I got really cold,warmth,neg,wetsuit,semantic search
+S3,regulator is hard to breathe from on deep dives,breathing_effort,neg,reg_first|reg_second,semantic search
+S4,dive computer battery runs out too quickly,battery,neg,computer|ai_computer|console_computer,semantic search + index comparison
+S5,light gear that is easy to pack when flying to a dive trip,travel,pos,*,semantic search
+S6,fins that hurt my feet,foot_comfort,neg,fins,semantic search
+F1,regulator started free flowing in icy water,freeflow,neg,reg_first|reg_second,vector search + relational/JSONB filter
+H1,what did divers think of the gear they used at Whytecliff Park,term:Whytecliff,any,*,hybrid full-text + vector (exact place name)
+D1,battery drains fast when diving in cold water,battery,neg,computer|ai_computer|console_computer,Part D combined query
