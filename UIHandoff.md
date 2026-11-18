@@ -129,6 +129,18 @@ POLICY table in `accounts/tests/test_url_guards.py`.
 All preview views are GET-only, and their tests assert that POST returns 405 and nothing is written.
 When refunds and the chatbot are built, replace these views. Don't extend them.
 
+**Ask Aria and the RAG backend:** master now has the real chatbot. It's a `POST /api/chat/stream/`
+endpoint (`chatbot:stream`, server-sent events) that needs a signed-in user, scopes sources by role,
+and refuses when it finds no source.
+- The `chat:ask` page is still the static preview and is **not yet wired** to that endpoint.
+- To wire it, replace the sample conversation with a small script that posts `{"message": ...}`
+  (with the CSRF token) and renders the streamed answer, citations and refusal using the existing
+  `chat/ask.html` styles.
+- Guests see the Ask Aria button, but the endpoint returns 401 for them. Either hide the button for
+  guests or show a sign-in prompt on the page.
+- In the role-guard test the endpoint's category is `API_LOGIN`: anonymous gets 401, and any
+  signed-in role is allowed.
+
 ---
 
 ## 5. Known gaps and deviations
