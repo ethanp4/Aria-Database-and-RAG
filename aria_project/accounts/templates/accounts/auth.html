@@ -1,48 +1,121 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}{{ page_title }}{% endblock %}
-{% block heading %}{{ page_title }}{% endblock %}
+{# one template for three views: login ("Log in"), register ("Register"), update_profile ("Create profile") #}
+{% block title %}{% if page_title == 'Log in' %}Sign in{% elif page_title == 'Register' %}Create account{% else %}{{ page_title }}{% endif %}{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/storefront.css' %}">{% endblock %}
+
+{# messages render inside the card (Figma: status message above the fields) #}
+{% block messages %}{% endblock %}
 
 {% block content %}
-<main class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-6 col-xl-5">
-            <section class="card border-0 shadow-sm" aria-labelledby="login-form-heading">
-                <div class="card-body p-4 p-md-5">
-                    <h1 id="login-form-heading" class="h2 mb-4">{{ page_title }}</h1>
-                    
-                    {% if messages %}
-                    <div class="mb-4" aria-live="polite">
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}" role="status">{{ message }}</div>
-                        {% endfor %}
+<div class="aria-page">
+    <header class="page-heading">
+        {% if page_title == 'Log in' %}
+            <h1>Sign in</h1>
+            <p>Sign in to checkout and manage your own orders.</p>
+        {% elif page_title == 'Register' %}
+            <h1>Create account</h1>
+            <p>A little less admin. A little more ocean.</p>
+        {% else %}
+            <h1>{{ page_title }}</h1>
+            <p>Add your contact details so we can reach you about your orders.</p>
+        {% endif %}
+    </header>
+
+    <div class="aria-columns">
+        <section class="aria-card" aria-labelledby="auth-card-heading">
+            <h2 id="auth-card-heading" class="h3">{% if page_title == 'Log in' %}Welcome back{% elif page_title == 'Register' %}Create your account{% else %}Your details{% endif %}</h2>
+
+            {% if messages %}
+            <div class="sf-stack-sm" role="status" aria-live="polite">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} mb-0">
+                    <span class="alert-icon sf-icon24">
+                        {% if message.level >= 40 %}<img src="{% static 'img/icons/alert-error.svg' %}" width="26" height="26" alt="">
+                        {% elif message.level == 25 %}<img src="{% static 'img/icons/alert-success.svg' %}" width="26" height="26" alt="">
+                        {% else %}<img src="{% static 'img/icons/alert-info.svg' %}" width="26" height="26" alt="">{% endif %}
+                    </span>
+                    <div>
+                        {% if message.level >= 40 and page_title == 'Log in' %}<span class="alert-title">Check your sign-in details</span>{% endif %}
+                        <p>{{ message }}</p>
                     </div>
-                    {% endif %}
-    
-                    <form method="post">
-                        {% csrf_token %}
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-warning" role="alert">{{ form.non_field_errors }}</div>
-                        {% endif %}
-
-                        {% for field in form %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% if field.errors %}
-                                <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-
-                        <button type="submit" class="btn btn-primary w-100">{{ page_title }}</button>
-                    </form>
                 </div>
-            </section>
-        </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" class="sf-stack-sm">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger mb-0" role="alert">
+                    <span class="alert-icon sf-icon24"><img src="{% static 'img/icons/alert-error.svg' %}" width="26" height="26" alt=""></span>
+                    <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+                </div>
+                {% endif %}
+
+                {% for field in form %}
+                <div class="aria-field-group">
+                    <div class="aria-field{% if field.errors %} is-invalid{% endif %}">
+                        <div class="aria-field__body">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                        {% if field.widget_type == 'password' %}
+                        <button type="button" class="aria-field__action" data-password-toggle="{{ field.id_for_label }}"
+                                aria-controls="{{ field.id_for_label }}" aria-pressed="false" hidden>
+                            Show<span class="visually-hidden"> {{ field.label|lower }}</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if field.help_text %}<p class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
+                    {% for error in field.errors %}<p class="field-error" id="{{ field.auto_id }}_error">{{ error }}</p>{% endfor %}
+                </div>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-primary w-100">{% if page_title == 'Log in' %}Sign in{% elif page_title == 'Register' %}Create account{% else %}Save details{% endif %}</button>
+            </form>
+
+            {% if page_title == 'Log in' or page_title == 'Register' %}
+            <div class="sf-auth__links">
+                {% if page_title == 'Log in' %}
+                <a class="text-action" href="{% url 'accounts:register' %}">Create account</a>
+                {% else %}
+                <a class="text-action" href="{% url 'accounts:login' %}">Already have an account? Sign in</a>
+                {% endif %}
+                <a class="text-action" href="{% url 'products:browse' %}">Browse without signing in</a>
+            </div>
+            {% endif %}
+
+            <p class="sf-muted">We keep your details while your account is active, plus 2 years.</p>
+        </section>
+
+        <aside class="feature-panel sf-auth__brand aria-hide-mobile" aria-label="About Aria">
+            <img src="{% static 'img/photos/hero-coast.png' %}" alt="">
+            <div>
+                <p class="lede-lg">Find your next depth.</p>
+                <p class="lede">Considered dive gear. Clear order details. Human help when you need it.</p>
+            </div>
+            <p class="m-0">Ships across Canada and the US</p>
+        </aside>
     </div>
-</main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // "Show" toggles a password field between hidden and visible text.
+  // Without JS the button stays hidden and the field works as a normal password input.
+  document.querySelectorAll('[data-password-toggle]').forEach(function (btn) {
+    var input = document.getElementById(btn.getAttribute('data-password-toggle'));
+    if (!input) { return; }
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    });
+  });
+</script>
 {% endblock %}
