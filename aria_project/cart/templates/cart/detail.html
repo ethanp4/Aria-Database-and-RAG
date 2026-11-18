@@ -1,70 +1,92 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Your Cart{% endblock %}
+{% block title %}Your cart{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/storefront.css' %}">{% endblock %}
 
 {% block content %}
-<main class="container py-5">
-    <h1 class="h2 mb-4">Your cart</h1>
+<div class="aria-page">
+    <ol class="aria-steps" aria-label="Checkout progress, step 1 of 4: Cart">
+        <li aria-current="step">Cart</li>
+        <li>Checkout</li>
+        <li>Review</li>
+        <li>Done</li>
+    </ol>
 
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-    {% endfor %}
+    <h1>Cart</h1>
 
     {% if lines %}
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th scope="col">Product</th>
-                        <th scope="col" class="text-end">Price</th>
-                        <th scope="col" style="width: 14rem;">Quantity</th>
-                        <th scope="col" class="text-end">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for line in lines %}
-                    <tr>
-                        <td>
-                            <a class="text-decoration-none" href="{% url 'products:detail' line.product.product_id %}">{{ line.product.name }}</a>
-                            {% if line.quantity > line.product.stock_quantity %}
-                            <div class="small text-danger">Only {{ line.product.stock_quantity }} left</div>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">{{ line.product.unit_price }}</td>
-                        <td>
-                            <form method="post" action="{% url 'cart:update' line.product.product_id %}" class="d-flex gap-2">
-                                {% csrf_token %}
-                                <input class="form-control" type="number" name="quantity" value="{{ line.quantity }}" min="0" max="99" aria-label="Quantity for {{ line.product.name }}">
-                                <button class="btn btn-outline-secondary" type="submit">Update</button>
-                            </form>
-                        </td>
-                        <td class="text-end">{{ line.line_total }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th scope="row" colspan="3" class="text-end">Subtotal</th>
-                        <td class="text-end fw-semibold">{{ subtotal }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-    {% if has_stock_problem %}
-    <p class="text-danger mt-3">Some items are over the available stock. Please lower the quantity.</p>
-    {% endif %}
-    <div class="text-end mt-3">
-        <a class="btn btn-primary" href="{% url 'cart:checkout' %}">Checkout</a>
+    <div class="aria-columns aria-columns--main-aside">
+        <section class="aria-card" aria-labelledby="cart-items-heading">
+            <h2 id="cart-items-heading">Your item{{ lines|length|pluralize }}</h2>
+
+            {% for line in lines %}
+            {% with pid=line.product.product_id %}
+            <div class="sf-cart-line">
+                <div class="sf-thumb" aria-hidden="true">{{ line.product.name|slice:':1' }}</div>
+                <div class="sf-cart-line__body">
+                    <div class="sf-cart-line__text">
+                        <p><a class="sf-cart-line__name" href="{% url 'products:detail' pid %}">{{ line.product.name }}</a></p>
+                        {% if line.product.category %}<p class="sf-muted">{{ line.product.category.name }}</p>{% endif %}
+                        <p>Qty {{ line.quantity }} · ${{ line.product.unit_price }} {{ line.product.currency }} each · <strong>${{ line.line_total }}</strong></p>
+                    </div>
+                    {% if line.quantity > line.product.stock_quantity %}
+                    <span class="status-badge status-badge--warning align-self-start"><img src="{% static 'img/icons/info-warning.svg' %}" width="19" height="19" alt="">Only {{ line.product.stock_quantity }} left</span>
+                    {% endif %}
+
+                    <div class="sf-cart-line__actions">
+                        {# −/+ submit their own tiny forms (below) so the quantity field below stays the only "quantity" in this form #}
+                        <form method="post" action="{% url 'cart:update' pid %}" id="qty-{{ pid }}">
+                            {% csrf_token %}
+                            <div class="sf-stepper">
+                                <button type="submit" form="dec-{{ pid }}" name="quantity" value="{{ line.quantity|add:'-1' }}"
+                                        aria-label="Decrease quantity of {{ line.product.name }}">&minus;</button>
+                                <input type="number" name="quantity" value="{{ line.quantity }}" min="0" max="99"
+                                       aria-label="Quantity for {{ line.product.name }}">
+                                <button type="submit" form="inc-{{ pid }}" name="quantity" value="{{ line.quantity|add:'1' }}"
+                                        aria-label="Increase quantity of {{ line.product.name }}"{% if line.quantity >= 99 %} disabled{% endif %}>+</button>
+                            </div>
+                            <button class="btn btn-link" type="submit">Update<span class="visually-hidden"> quantity of {{ line.product.name }}</span></button>
+                        </form>
+                        <form method="post" action="{% url 'cart:update' pid %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="quantity" value="0">
+                            <button class="btn btn-link" type="submit" aria-label="Remove {{ line.product.name }}">Remove</button>
+                        </form>
+                    </div>
+                    <form method="post" action="{% url 'cart:update' pid %}" id="dec-{{ pid }}" hidden>{% csrf_token %}</form>
+                    <form method="post" action="{% url 'cart:update' pid %}" id="inc-{{ pid }}" hidden>{% csrf_token %}</form>
+                </div>
+            </div>
+            {% endwith %}
+            {% endfor %}
+
+            <a class="text-action" href="{% url 'products:browse' %}">Continue browsing</a>
+        </section>
+
+        <aside class="aria-card sf-summary" aria-labelledby="summary-heading">
+            <h2 id="summary-heading">Order summary</h2>
+            <div class="summary-row"><span>Subtotal</span><span>${{ subtotal }} CAD</span></div>
+            <div class="summary-row"><span>Shipping</span><span>Calculated at checkout</span></div>
+            <div class="summary-row"><span>Tax</span><span>Calculated at checkout</span></div>
+            {% if has_stock_problem %}
+            <div class="alert alert-danger mb-0" role="alert">
+                <span class="alert-icon sf-icon24"><img src="{% static 'img/icons/alert-error.svg' %}" width="26" height="26" alt=""></span>
+                <p>Some items are over the available stock. Please lower the quantity.</p>
+            </div>
+            {% endif %}
+            <a class="btn btn-primary" href="{% url 'cart:checkout' %}">Continue to checkout</a>
+        </aside>
     </div>
     {% else %}
-    <div class="card border-0 bg-body-tertiary">
-        <div class="card-body py-5 text-center">
-            <h2 class="h5">Your cart is empty</h2>
-            <a class="btn btn-primary mt-2" href="{% url 'products:browse' %}">Browse products</a>
-        </div>
+    <div class="aria-columns">
+        <section class="aria-card" aria-labelledby="empty-cart-heading">
+            <h2 id="empty-cart-heading" class="h3">Your cart is empty</h2>
+            <p class="sf-muted">Find your next dive essential.</p>
+            <a class="btn btn-primary" href="{% url 'products:browse' %}">Browse products</a>
+        </section>
     </div>
     {% endif %}
-</main>
+</div>
 {% endblock %}

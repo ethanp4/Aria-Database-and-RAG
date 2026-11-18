@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
-import os
 from pathlib import Path
 import environ
 from django.contrib.messages import constants as message_constants
@@ -27,12 +26,18 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bb&hx6pbv_bu_+xx&nuqr7x72b@f=*r$-5lb=na$(9v6o8gd)9'
+# The defaults below are for local development only; production sets
+# DJANGO_SECRET_KEY, DJANGO_DEBUG=False and DJANGO_ALLOWED_HOSTS.
+SECRET_KEY = env(
+    'DJANGO_SECRET_KEY',
+    default='django-insecure-bb&hx6pbv_bu_+xx&nuqr7x72b@f=*r$-5lb=na$(9v6o8gd)9',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DJANGO_DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+# comma-separated, e.g. DJANGO_ALLOWED_HOSTS=aria.azurewebsites.net,localhost
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=[])
 
 
 # Application definition
@@ -50,6 +55,9 @@ INSTALLED_APPS = [
     'orders',
     'payments',
     'products',
+    'refunds',
+    'analytics',
+    'chat',
     'chatbot',
 ]
 
@@ -89,6 +97,7 @@ TEMPLATES = [
                 "accounts.context_preprocessors.current_profile",
                 "accounts.context_preprocessors.account_info",
                 "cart.context_processors.cart_info",
+                "core.context_processors.site_nav",
             ],
         },
     },

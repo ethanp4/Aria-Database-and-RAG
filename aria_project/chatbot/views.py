@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -18,6 +19,19 @@ REFUSAL = (
 )
 
 
+def _open_ollama(request, timeout):
+    """urlopen() for the configured Ollama server only.
+
+    OLLAMA_BASE_URL comes from settings, never from the user; still, refuse anything but
+    http(s) so a misconfigured value can't make urlopen read file:// or custom schemes.
+    ValueError is handled by the callers like any other model failure.
+    """
+    if urlsplit(request.full_url).scheme not in ('http', 'https'):
+        raise ValueError('OLLAMA_BASE_URL must be an http(s) URL')
+    # scheme checked above, so bandit's B310 (file:/custom schemes) doesn't apply
+    return urlopen(request, timeout=timeout)  # nosec B310
+
+
 def _post_ollama_json(endpoint, payload, timeout=60):
     request = Request(
         f'{settings.OLLAMA_BASE_URL}{endpoint}',
@@ -25,7 +39,7 @@ def _post_ollama_json(endpoint, payload, timeout=60):
         headers={'Content-Type': 'application/json'},
         method='POST',
     )
-    with urlopen(request, timeout=timeout) as response:
+    with _open_ollama(request, timeout) as response:
         return json.loads(response.read().decode('utf-8'))
 
 
@@ -50,17 +64,16 @@ def _embed_question(question):
 
 
 def _search_chunks(embedding, prefixes, limit):
-    path_filters = ' OR '.join('source_path LIKE %s' for _ in prefixes)
     vector = json.dumps(embedding)
     with connection.cursor() as cursor:
-        cursor.execute(f"""
+        cursor.execute("""
             SELECT source_path, title, heading, content,
                    1 - (embedding <=> %s::vector) AS similarity
             FROM rag_document_chunks
-            WHERE ({path_filters})
+            WHERE source_path LIKE ANY(%s)
             ORDER BY embedding <=> %s::vector
             LIMIT %s
-        """, [vector, *[prefix + '%' for prefix in prefixes], vector, limit])
+        """, [vector, [prefix + '%' for prefix in prefixes], vector, limit])
         rows = cursor.fetchall()
     return [
         {
@@ -143,7 +156,7 @@ def _stream_ollama_answer(question, sources):
     })
 
     try:
-        with urlopen(request, timeout=180) as response:
+        with _open_ollama(request, 180) as response:
             for line in response:
                 if not line.strip():
                     continue
@@ -157,7 +170,7 @@ def _stream_ollama_answer(question, sources):
                 if chunk.get('done'):
                     yield _sse('done', {})
                     return
-    except (OSError, json.JSONDecodeError):  # URLError/HTTPError/timeouts are OSErrors
+    except (OSError, ValueError):  # URLError/HTTPError/timeouts are OSErrors; JSONDecodeError and a bad URL scheme are ValueErrors
         yield _sse('error', {'message': 'The model could not complete the response.'})
 
 

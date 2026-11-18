@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Accessible analytics data{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/backoffice.css' %}">{% endblock %}
+
+{% block content %}
+<div class="aria-page">
+    <header class="page-heading">
+        <h1>Accessible analytics data</h1>
+        <p>{{ username }} · {{ generated_at|date:"j F Y, H:i" }} · Paid orders, CAD</p>
+    </header>
+
+    {% include "analytics/_kpis.html" %}
+
+    <div class="bo-view-toggle">
+        <p>Same data, two accessible views.</p>
+        <a class="btn btn-secondary" href="{% url 'analytics:dashboard' %}">Hide data table</a>
+    </div>
+
+    <section class="aria-card" aria-labelledby="revenue-table-heading">
+        <h2 id="revenue-table-heading" class="chart-title">
+            <span>Revenue data · accessible table</span>
+            <span class="bo-card-subhead">Unit: CAD{% if peak_month %} · Highest month: {{ peak_month.month|date:"F Y" }}, ${{ peak_month.revenue|floatformat:"2g" }}{% endif %}</span>
+        </h2>
+        <div class="bo-datatable-wrap">
+            <table class="bo-datatable">
+                <caption class="visually-hidden">Revenue and paid orders per month, last 12 months</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Month</th>
+                        <th scope="col" class="num">Revenue (CAD)</th>
+                        <th scope="col" class="num">Paid orders</th>
+                        <th scope="col">Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in monthly %}
+                    <tr>
+                        <th scope="row">{{ m.month|date:"M Y" }}</th>
+                        <td class="num">${{ m.revenue|floatformat:"2g" }} CAD</td>
+                        <td class="num">{{ m.orders|floatformat:"0g" }}</td>
+                        <td>{% if m.is_current %}Month-to-date{% elif m.is_peak %}Highest month{% else %}Complete month{% endif %}{% if m.is_current and m.is_peak %} · highest month{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="aria-card" aria-labelledby="daily-table-heading">
+        <h2 id="daily-table-heading" class="h3">Orders per day · accessible table</h2>
+        <div class="bo-datatable-wrap">
+            <table class="bo-datatable">
+                <caption class="visually-hidden">Paid orders per day, last {{ days }} days</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col" class="num">Orders</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in daily %}
+                    <tr>
+                        <th scope="row">{{ d.day|date:"j M Y" }}</th>
+                        <td class="num">{{ d.orders|floatformat:"0g" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="bo-strong mb-0">Total · {{ daily_total|floatformat:"0g" }} paid orders</p>
+    </section>
+
+    <div class="bo-columns-2">
+        <section class="aria-card" aria-labelledby="status-table-heading">
+            <h2 id="status-table-heading" class="h3">Orders by status · last {{ days }} days</h2>
+            {% if by_status %}
+            <div class="bo-datatable-wrap">
+                <table class="bo-datatable">
+                    <caption class="visually-hidden">Orders per status, last {{ days }} days</caption>
+                    <thead><tr><th scope="col">Status</th><th scope="col" class="num">Orders</th></tr></thead>
+                    <tbody>
+                        {% for s in by_status %}
+                        <tr><th scope="row">{{ s.label }}</th><td class="num">{{ s.orders|floatformat:"0g" }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="bo-empty">No orders in the last {{ days }} days.</p>
+            {% endif %}
+        </section>
+
+        <section class="aria-card" aria-labelledby="top-table-heading">
+            <h2 id="top-table-heading" class="h3">Top products by units · last {{ days }} days</h2>
+            {% if top_products %}
+            <div class="bo-datatable-wrap">
+                <table class="bo-datatable">
+                    <caption class="visually-hidden">Best-selling products by units on paid orders, last {{ days }} days</caption>
+                    <thead><tr><th scope="col">Product</th><th scope="col" class="num">Units</th><th scope="col" class="num">Revenue (CAD)</th></tr></thead>
+                    <tbody>
+                        {% for p in top_products %}
+                        <tr><th scope="row">{{ p.product__name }}</th><td class="num">{{ p.units|floatformat:"0g" }}</td><td class="num">${{ p.revenue|floatformat:"2g" }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="bo-empty">No products sold in the last {{ days }} days.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="aria-card" aria-labelledby="low-stock-heading">
+        <h2 id="low-stock-heading" class="h3">Low stock · at or below reorder level</h2>
+        {% include "analytics/_low_stock.html" %}
+    </section>
+
+    {% include "analytics/_refunds.html" %}
+</div>
+{% endblock %}

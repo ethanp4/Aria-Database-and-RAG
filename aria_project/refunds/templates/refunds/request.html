@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if step == 'items' %}Refund items{% elif step == 'confirm' %}Confirm refund request{% elif step == 'requested' %}Refund request preview{% else %}Refund reason{% endif %}{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/checkout.css' %}">{% endblock %}
+
+{% block content %}
+{# UI PREVIEW ONLY: there is no Refund model yet. Nothing on this page submits or writes; steps are GET links. #}
+{% url 'chat:ask' as ask_url %}
+{% url 'refunds:request' order.order_id as step_url %}
+<div class="aria-page">
+    <div class="page-heading">
+        <h1>{% if step == 'items' %}Refund items{% elif step == 'confirm' %}Confirm refund request{% elif step == 'requested' %}Refund request preview{% else %}Refund reason{% endif %}</h1>
+        <p>Order #{{ order.order_id }}{% if items %} · {{ items.0.product.name }}{% if items|length > 1 %} and {{ items|length|add:"-1" }} more{% endif %}{% endif %} · ${{ order.total_amount }} CAD</p>
+    </div>
+
+    <div class="prototype-notice" role="note">
+        <img src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+        <span>Preview only: refunds aren't live yet. Nothing on these screens is saved or sent. Contact us to request a refund.</span>
+    </div>
+
+    {% if step != 'requested' %}
+    <nav aria-label="Refund request steps">
+        <ol class="refund-steps">
+            <li><a href="{{ step_url }}?step=reason"{% if step == 'reason' %} aria-current="step"{% endif %}>1 Reason</a></li>
+            <li><a href="{{ step_url }}?step=items"{% if step == 'items' %} aria-current="step"{% endif %}>2 Items</a></li>
+            <li><a href="{{ step_url }}?step=confirm"{% if step == 'confirm' %} aria-current="step"{% endif %}>3 Confirm</a></li>
+        </ol>
+    </nav>
+    {% else %}
+    <div class="alert alert-warning" role="status">
+        <img class="alert-icon" src="{% static 'img/icons/info-warning.svg' %}" width="19.25" height="19" alt="">
+        <span><span class="alert-title">No refund request was created.</span>
+        Preview only: refunds aren't live yet. Contact us to request a refund.</span>
+    </div>
+    {% endif %}
+
+    <div class="aria-columns aria-columns--main-aside">
+        <section class="aria-card refund-card" aria-labelledby="refund-card-heading">
+            {% if step == 'reason' %}
+                <h2 class="mb-0" id="refund-card-heading">Why are you returning this item?</h2>
+                {% include "refunds/_request_items.html" %}
+                {# not inside a form and no name attributes: these fields are never submitted #}
+                <div class="aria-field-group">
+                    <div class="aria-field">
+                        <div class="aria-field__body">
+                            <label for="refund-reason">Reason</label>
+                            <select id="refund-reason" class="form-select">
+                                <option>Size not suitable</option>
+                                <option>Damaged or faulty</option>
+                                <option>Not as described</option>
+                                <option>Changed my mind</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="aria-field-group">
+                    <div class="aria-field">
+                        <div class="aria-field__body">
+                            <label for="refund-details">Tell us more</label>
+                            <textarea id="refund-details" rows="3" aria-describedby="refund-details-help"></textarea>
+                        </div>
+                    </div>
+                    <p class="form-text mb-0" id="refund-details-help">Please do not include card details or other sensitive information. In this preview nothing you type is saved.</p>
+                </div>
+                <a class="btn btn-primary w-100" href="{{ step_url }}?step=items">Continue to items</a>
+            {% elif step == 'items' %}
+                <h2 class="mb-0" id="refund-card-heading">Choose items to return</h2>
+                {% include "refunds/_request_items.html" %}
+                {% for item in items %}
+                <label class="refund-item-check" for="refund-item-{{ forloop.counter }}">
+                    <input class="form-check-input" type="checkbox" id="refund-item-{{ forloop.counter }}" checked>
+                    <span>{{ item.product.name }} · Qty {{ item.quantity }} · ${{ item.line_total }}</span>
+                </label>
+                {% endfor %}
+                <p class="checkout-muted">Original paid amount: ${{ order.total_amount }} CAD.</p>
+                <a class="btn btn-primary w-100" href="{{ step_url }}?step=confirm">Continue to confirmation</a>
+            {% elif step == 'confirm' %}
+                <h2 class="mb-0" id="refund-card-heading">Confirm your refund request</h2>
+                <div>
+                    {% for item in items %}<p>Order #{{ order.order_id }} · {{ item.product.name }} · Qty {{ item.quantity }}</p>{% endfor %}
+                    <p>Order total · ${{ order.total_amount }} CAD</p>
+                    {% if payment_display %}<p>Original payment · {{ payment_display }}</p>{% endif %}
+                </div>
+                <p class="checkout-muted">When refunds go live, a staff member will review every request, usually within 2 business days.</p>
+                <div class="refund-actions">
+                    <a class="btn btn-primary" href="{{ step_url }}?step=requested">Preview the next screen</a>
+                    <a class="btn btn-secondary" href="{{ step_url }}?step=items">Back · keep my answers</a>
+                </div>
+                <p class="checkout-muted">This preview does not send a request.</p>
+            {% else %}
+                <h2 class="mb-0" id="refund-card-heading">Request summary (preview)</h2>
+                {% include "refunds/_request_items.html" %}
+                <div>
+                    <p>Order total · ${{ order.total_amount }} CAD</p>
+                    {% if payment_display %}<p>Original payment · {{ payment_display }}</p>{% endif %}
+                </div>
+                <span class="status-badge status-badge--neutral align-self-start">Not submitted</span>
+                <a class="btn btn-primary w-100" href="{% url 'orders:history' %}">Back to order history</a>
+            {% endif %}
+        </section>
+
+        <div class="checkout-stack">
+            <div class="refund-human">
+                <img src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+                <p><strong>Human review</strong>When refunds go live, a staff member reviews every request, usually within 2 business days.</p>
+            </div>
+            <section class="aria-card refund-next" aria-labelledby="next-heading">
+                <h2 class="mb-0" id="next-heading">What happens next</h2>
+                <p>A team member checks each request against our returns policy. Any approved refund goes to the original payment method.</p>
+                {% if ask_url %}<a class="text-action" href="{{ ask_url }}">Ask Aria about returns</a>{% endif %}
+            </section>
+        </div>
+    </div>
+
+    {% if step == 'items' %}
+    <a class="text-action" href="{{ step_url }}?step=reason">Back to reason</a>
+    {% elif step == 'confirm' %}
+    <a class="text-action" href="{{ step_url }}?step=reason">Change items or reason</a>
+    {% else %}
+    <a class="text-action" href="{% url 'orders:detail' order.order_id %}">Back to order #{{ order.order_id }}</a>
+    {% endif %}
+</div>
+{% endblock %}

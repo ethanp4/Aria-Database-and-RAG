@@ -1,0 +1,128 @@
+/*
+ * Checkout, customer orders and customer refund request screens
+ * (Figma 06 Prototype: D/M-05 Checkout states, D/M-C-11 Order history, refund request steps).
+ * Builds on aria.css tokens and components; only page-specific pieces live here.
+ */
+
+/* ---------- checkout sub-header: Back + "Secure checkout" ---------- */
+.checkout-subhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.checkout-subhead .text-action { display: inline-flex; }
+.checkout-subhead p { margin: 0; font-size: 14px; color: var(--color-text-secondary); }
+
+/* ---------- segmented progress (Figma Stepper-progress) ---------- */
+.checkout-progress {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
+  list-style: none; margin: 0; padding: 0;
+  background: var(--color-bg-surface); border-radius: var(--radius-sm);
+}
+.checkout-progress li {
+  position: relative; display: flex; align-items: center; gap: 4px; min-height: var(--tap);
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle); color: var(--color-text-secondary); font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.checkout-progress li img { flex: 0 0 auto; width: 12px; height: 12px; }
+.checkout-progress li[aria-current="step"] {
+  background: var(--color-brand-primary); color: var(--color-text-inverse); font-weight: 600;
+  box-shadow: 0 4px 0 -2px var(--color-brand-primary);
+}
+@media (max-width: 575.98px) {
+  .checkout-progress li { padding: 8px 6px; justify-content: center; }
+}
+
+/* ---------- cards on these screens (Figma: white, 12px radius, 16px padding) ---------- */
+.checkout-card { padding: 16px; gap: 8px; }
+.checkout-card__head { display: flex; align-items: center; gap: 12px; }
+.checkout-card__head h2, .checkout-card__head h3 { flex: 1 1 auto; margin: 0; font-size: 20px; line-height: 28px; }
+.checkout-card p { margin: 0; }
+.checkout-card .aria-field-group + .aria-field-group { margin-top: 8px; }
+.checkout-muted { color: var(--color-text-secondary); font-size: 14px; }
+.checkout-error-text { color: var(--color-error); font-size: 14px; margin: 0; }
+.checkout-stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+
+
+/* radio / checkbox choice tiles (shipping method, test card, billing toggle) */
+.checkout-options { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; }
+.checkout-option {
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; margin: 0;
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
+  background: var(--color-bg-surface); cursor: pointer;
+}
+.checkout-option .form-check-input { float: none; margin: 0; flex: 0 0 auto; }
+.checkout-option:has(input:checked) { border-color: var(--color-brand-primary); background: var(--color-info-bg); }
+.checkout-option:focus-within { outline: 3px solid var(--bs-focus-ring-color); outline-offset: 1px; }
+
+/* ---------- order summary aside ---------- */
+.checkout-summary { padding: 24px; gap: 12px; }
+.checkout-summary__title { margin: 0; font-family: var(--font-body); font-weight: 400; font-size: 14px; line-height: 1.5; letter-spacing: 0; }
+.checkout-summary .summary-row { font-size: 14px; padding: 0; }
+.checkout-summary .summary-row dd, .checkout-summary .summary-row span:last-child { font-weight: 500; white-space: nowrap; }
+.checkout-summary dl { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.checkout-summary dt { font-weight: 400; }
+.checkout-summary dd { margin: 0; }
+.checkout-summary .summary-row--total { font-family: var(--font-display); font-size: 20px; padding-top: 12px; margin-top: 0; }
+.checkout-summary .summary-row--total dd { font-weight: 700; }
+
+/* line item: placeholder thumbnail + text (products have no photo field) */
+.checkout-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.checkout-line { display: flex; gap: 16px; align-items: flex-start; }
+.checkout-line__thumb {
+  flex: 0 0 80px; width: 80px; height: 80px; border-radius: var(--radius-md);
+  background: var(--color-bg-subtle); color: var(--color-text-secondary);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; text-align: center;
+}
+.checkout-line__text { flex: 1 1 auto; min-width: 0; }
+.checkout-line__text p { margin: 0; }
+.checkout-line__name { overflow-wrap: anywhere; }
+.checkout-line__meta { color: var(--color-text-secondary); }
+
+/* submit in flight (Figma "Processing payment" state): spinner inside the disabled button */
+.btn .btn-spinner { display: none; width: 20px; height: 20px; border-width: 3px; }
+.btn.is-processing .btn-spinner { display: inline-block; }
+
+/* ---------- order detail / history ---------- */
+.order-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.order-heading h1 { margin: 0; }
+.order-heading p { flex-basis: 100%; }
+.order-card { gap: 16px; }
+.order-card__head { display: flex; align-items: center; gap: 12px; }
+.order-card__head h2 { flex: 1 1 auto; margin: 0; font-size: 20px; line-height: 28px; }
+.order-card__head h2 a { color: inherit; text-decoration: none; }
+.order-card__details p { margin: 0; }
+.order-card__actions { display: flex; gap: 12px; }
+.order-card__actions .btn { flex: 1 1 0; }
+.order-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.order-addresses { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.order-addresses h3 { font-size: 16px; line-height: 28px; margin: 0; }
+.order-addresses address, .order-addresses p { margin: 0; }
+.order-processing { display: flex; align-items: center; gap: 16px; }
+.order-processing .aria-spinner { flex: 0 0 auto; width: 32px; height: 32px; }
+
+/* ---------- customer refund request (UI preview) ---------- */
+.refund-steps { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.refund-steps a {
+  display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 12px;
+  border-radius: var(--radius-pill); background: var(--color-bg-subtle); color: var(--color-text-secondary);
+  font-size: 16px; text-decoration: none;
+}
+.refund-steps a:hover { color: var(--color-brand-primary); }
+.refund-steps a[aria-current="step"] { background: var(--color-brand-primary); color: var(--color-text-inverse); }
+.refund-card { padding: 24px; gap: 16px; }
+.refund-card h2 { font-size: 20px; line-height: 28px; }
+.refund-card p { margin: 0; }
+.refund-human {
+  display: flex; gap: 12px; align-items: flex-start; padding: 16px 24px;
+  background: var(--color-info-bg); border-radius: var(--radius-sm); color: var(--color-brand-primary);
+}
+.refund-human img { flex: 0 0 auto; margin-top: 2px; }
+.refund-human p { margin: 0; }
+.refund-human strong { display: block; font-weight: 600; }
+.refund-next h2 { font-size: 20px; line-height: 28px; }
+.refund-next p { margin: 0; font-weight: 600; }
+.refund-item-check {
+  display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 16px; margin: 0;
+  border: 1px solid var(--color-brand-primary); border-radius: var(--radius-sm); background: var(--color-info-bg); cursor: pointer;
+}
+.refund-item-check .form-check-input { float: none; margin: 0; flex: 0 0 auto; }
+.refund-actions { display: flex; flex-direction: column; gap: 12px; align-items: stretch; max-width: 340px; }
+@media (max-width: 575.98px) { .refund-actions { max-width: none; } }

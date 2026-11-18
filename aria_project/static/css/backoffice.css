@@ -1,0 +1,197 @@
+/*
+ * Back-office screens (Figma 06 Prototype: staff orders, refund review,
+ * admin analytics, edit product). Builds on aria.css tokens; page-specific only.
+ */
+
+/* ---------- shared ---------- */
+.bo-stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.bo-meta { margin: 0; }
+.bo-meta p { margin: 0; }
+.bo-muted { color: var(--color-text-secondary); }
+.bo-strong { font-weight: 600; }
+.bo-card-subhead { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 28px; letter-spacing: -0.02em; }
+.bo-card-subhead.bo-muted { color: var(--color-text-secondary); }
+.aria-card .divider { width: 100%; }
+.bo-actions { display: flex; flex-direction: column; gap: 16px; }
+.bo-actions .btn { width: 100%; }
+.bo-alert-text { display: flex; flex-direction: column; }
+.status-badge img { object-fit: contain; }
+
+/* neutral tile instead of a product photo (products have no image field yet) */
+.bo-photo-placeholder {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  background: var(--color-bg-subtle); color: var(--color-text-secondary);
+  border-radius: var(--radius-md); font-size: 14px; padding: 8px;
+}
+.bo-photo-placeholder--thumb { width: 80px; height: 80px; flex: 0 0 80px; }
+.bo-photo-placeholder--hero { width: 100%; height: 280px; }
+.bo-photo-placeholder--small { height: 100px; }
+
+/* ---------- staff orders: filter card + data table ---------- */
+.bo-filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.bo-filter-grid .aria-field select { appearance: auto; cursor: pointer; }
+.bo-filter-submit { width: 100%; }
+
+.bo-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.bo-table caption { caption-side: top; }
+.bo-table thead th {
+  background: var(--color-bg-inverse); color: var(--color-text-inverse);
+  font-weight: 600; text-align: left; padding: 16px 12px; white-space: nowrap;
+}
+.bo-table thead th:first-child { padding-left: 16px; }
+.bo-table td, .bo-table tbody th { padding: 16px 12px; vertical-align: middle; font-weight: 400; text-align: left; }
+.bo-table td:first-child, .bo-table tbody th:first-child { padding-left: 16px; }
+.bo-table tbody tr:nth-child(odd) { background: var(--color-bg-surface); }
+.bo-table tbody tr:nth-child(even) { background: var(--color-bg-page); }
+.bo-table .order-ref { font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; min-height: var(--tap); }
+.bo-table .order-ref:hover { text-decoration: underline; }
+.bo-table .bo-date { color: var(--color-text-secondary); }
+.bo-table .bo-status { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.bo-table-wrap { border: 1px solid var(--color-border-default); border-radius: var(--radius-md); overflow: hidden; }
+
+/* small data table inside a card (analytics, refund decisions) */
+.bo-datatable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.bo-datatable thead th { background: var(--color-bg-subtle); font-weight: 600; padding: 12px; text-align: left; }
+.bo-datatable td, .bo-datatable tbody th { padding: 12px; font-weight: 400; text-align: left; }
+.bo-datatable tbody tr:nth-child(odd) { background: var(--color-bg-surface); }
+.bo-datatable tbody tr:nth-child(even) { background: var(--color-bg-page); }
+.bo-datatable .num { text-align: right; font-variant-numeric: tabular-nums; }
+.bo-datatable-wrap { border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); overflow-x: auto; }
+
+/* stacked "card per row" tables on phones (Figma M- frames) */
+@media (max-width: 767.98px) {
+  .bo-filter-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .bo-table-wrap { border: 0; overflow: visible; }
+  .bo-table--stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .bo-table--stack, .bo-table--stack tbody, .bo-table--stack tr, .bo-table--stack td, .bo-table--stack tbody th { display: block; width: 100%; }
+  .bo-table--stack tbody { display: flex; flex-direction: column; gap: 16px; }
+  .bo-table--stack tbody tr,
+  .bo-table--stack tbody tr:nth-child(even) {
+    background: var(--color-bg-surface); border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-card); padding: 16px;
+  }
+  .bo-table--stack td, .bo-table--stack tbody th,
+  .bo-table--stack td:first-child, .bo-table--stack tbody th:first-child { padding: 0; }
+  .bo-table--stack td[data-label]::before { content: attr(data-label) " · "; }
+  .bo-table--stack .order-ref { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--color-text-primary); }
+  .bo-table--stack .bo-status { margin-top: 8px; }
+  .bo-table--stack .bo-status-cell { order: -1; }
+}
+
+/* previous / page x of y / next */
+.bo-pager { display: flex; align-items: center; gap: 16px; }
+.bo-pager > * { flex: 1 1 0; }
+.bo-pager .btn { width: 100%; }
+.bo-pager .btn[aria-disabled="true"] { pointer-events: none; }
+.bo-pager__label { color: var(--color-text-secondary); margin: 0; }
+@media (max-width: 575.98px) {
+  .bo-pager { flex-direction: column; align-items: stretch; gap: 12px; }
+  .bo-pager__label { order: 0; }
+}
+
+/* ---------- order detail ---------- */
+.bo-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.bo-detail-grid h3 { margin: 0 0 4px; font-size: 16px; line-height: 28px; }
+.bo-detail-grid address, .bo-detail-grid p { margin: 0; }
+@media (max-width: 767.98px) { .bo-detail-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+.bo-ship-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 575.98px) { .bo-ship-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- refund review ---------- */
+.bo-order-item { display: flex; gap: 16px; align-items: flex-start; }
+.bo-order-item p { margin: 0; }
+.bo-risk p { margin: 0; }
+.bo-history p { margin: 0; }
+.bo-processing {
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 12px 16px;
+  border-radius: var(--radius-sm); background: var(--color-bg-subtle); color: var(--color-brand-primary); font-weight: 600;
+}
+.bo-processing .aria-spinner { width: 20px; height: 20px; border-width: 3px; flex: 0 0 20px; }
+.bo-processing span { flex: 1; text-align: center; }
+.bo-state-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- admin analytics ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.kpi-tile { padding: 24px; color: var(--color-text-secondary); }
+.kpi-tile p { margin: 0; }
+.kpi-tile .kpi-value {
+  font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 32px;
+  letter-spacing: -0.02em; color: var(--color-text-primary);
+}
+.kpi-tile .kpi-note { font-size: 14px; }
+.kpi-tile .kpi-label { font-family: var(--font-body); font-size: 16px; font-weight: 400; line-height: 1.5; letter-spacing: 0; color: var(--color-text-secondary); margin: 0; }
+@media (max-width: 991.98px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 575.98px) { .kpi-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.bo-view-toggle { display: flex; align-items: center; gap: 16px; }
+.bo-view-toggle p { flex: 1; margin: 0; color: var(--color-text-secondary); }
+.bo-view-toggle .btn { width: 260px; }
+@media (max-width: 575.98px) {
+  .bo-view-toggle { flex-direction: column; align-items: stretch; }
+  .bo-view-toggle .btn { width: 100%; }
+}
+
+.chart-title { margin: 0; }
+.chart-title span { display: block; font-size: 20px; line-height: 28px; }
+.chart-note { margin: 0; font-size: 14px; color: var(--color-text-secondary); }
+
+/* monthly revenue: plain CSS bars, value above, month below */
+.bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 224px; }
+.bar-chart__col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; font-size: 14px; }
+.bar-chart__bar { width: 100%; background: var(--color-brand-primary); border-radius: 4px 4px 0 0; min-height: 2px; }
+.bar-chart__col.is-peak .bar-chart__bar { background: var(--color-bg-inverse); }
+.bar-chart__col.is-peak .bar-chart__value { font-weight: 600; }
+.bar-chart__label { color: var(--color-text-secondary); white-space: nowrap; }
+.bar-chart__value { white-space: nowrap; }
+@media (max-width: 575.98px) {
+  .bar-chart { gap: 3px; }
+  .bar-chart__col { font-size: 11px; }
+}
+
+/* daily orders: inline SVG line chart */
+.line-chart { display: flex; gap: 8px; }
+.line-chart__y { display: flex; flex-direction: column; justify-content: space-between; height: 152px; font-size: 14px; color: var(--color-text-secondary); text-align: right; min-width: 36px; }
+.line-chart__plot { flex: 1; min-width: 0; }
+.line-chart svg { display: block; width: 100%; height: 152px; overflow: visible; }
+.line-chart__x { display: flex; justify-content: space-between; font-size: 14px; color: var(--color-text-secondary); margin-top: 8px; }
+
+/* horizontal bars (orders by status, top products) */
+.hbar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.hbar-list li { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 14px; }
+.hbar-list .hbar-track { height: 12px; background: var(--color-bg-subtle); border-radius: var(--radius-pill); overflow: hidden; }
+.hbar-list .hbar-fill { height: 100%; background: var(--color-brand-primary); border-radius: var(--radius-pill); }
+.hbar-list .hbar-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (max-width: 575.98px) { .hbar-list li { grid-template-columns: minmax(0, 1fr) auto; } .hbar-list .hbar-track { grid-column: 1 / -1; grid-row: 2; } }
+
+.bo-columns-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+@media (max-width: 991.98px) { .bo-columns-2 { grid-template-columns: minmax(0, 1fr); } }
+
+.bo-empty { padding: 16px; border-radius: var(--radius-sm); background: var(--color-bg-page); color: var(--color-text-secondary); margin: 0; }
+
+/* ---------- admin product form ---------- */
+.bo-field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 575.98px) { .bo-field-row { grid-template-columns: minmax(0, 1fr); } }
+.bo-form { display: flex; flex-direction: column; gap: 16px; }
+.bo-form .aria-field select { appearance: auto; cursor: pointer; }
+.bo-form .form-check { margin: 0; }
+.bo-form-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 575.98px) { .bo-form-actions { grid-template-columns: minmax(0, 1fr); } }
+.bo-field-help { font-size: 14px; color: var(--color-text-secondary); margin: 0; }
+.bo-field-errors ul, .field-error ul { list-style: none; padding: 0; margin: 0; }
+
+/* ---------- admin dashboard (products overview) ---------- */
+.bo-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.bo-section-head h2 { margin: 0; }
+.bo-section-head .bo-section-title { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.bo-sort-link { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: var(--tap); white-space: nowrap; }
+.bo-sort-link:hover { text-decoration: underline; color: inherit; }
+.bo-table thead .bo-sort-link { color: var(--color-text-inverse); }
+.bo-field-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.bo-field-grid .bo-span-2 { grid-column: 1 / -1; }
+@media (max-width: 575.98px) { .bo-field-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Django widgets carry .form-control/.form-select; inside an .aria-field the box is the field */
+.aria-field .form-control, .aria-field .form-select {
+  border: 0; border-radius: 0; box-shadow: none; padding: 0; min-height: 24px; background-color: transparent;
+}
+.aria-field .form-select { padding-right: 28px; background-position: right 0 center; }
+.aria-field .form-control:focus, .aria-field .form-select:focus { box-shadow: none; }

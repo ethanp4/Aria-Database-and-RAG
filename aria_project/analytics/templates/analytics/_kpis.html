@@ -1,0 +1,26 @@
+{% load static %}
+<section aria-labelledby="kpi-heading">
+    <h2 id="kpi-heading" class="visually-hidden">Key figures</h2>
+    <div class="kpi-grid">
+        <div class="aria-card kpi-tile">
+            <p>Revenue this month</p>
+            <p class="kpi-value">${{ kpi_revenue|floatformat:"2g" }} CAD</p>
+            <p class="kpi-note">{{ this_month|date:"F" }} to date · paid orders</p>
+        </div>
+        <div class="aria-card kpi-tile">
+            <p>Orders this month</p>
+            <p class="kpi-value">{{ kpi_orders|floatformat:"0g" }}</p>
+            <p class="kpi-note">{{ this_month|date:"j" }}–{{ today|date:"j F" }} · paid orders</p>
+        </div>
+        <div class="aria-card kpi-tile">
+            <p>Refund rate</p>
+            <p class="kpi-value">Unavailable</p>
+            <p class="kpi-note">Refunds aren't live yet</p>
+        </div>
+        <div class="aria-card kpi-tile">
+            <p>Open refunds</p>
+            <p class="kpi-value">Unavailable</p>
+            <p class="kpi-note">Refunds aren't live yet</p>
+        </div>
+    </div>
+</section>

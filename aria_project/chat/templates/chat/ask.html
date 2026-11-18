@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ask Aria{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/storefront.css' %}">{% endblock %}
+
+{# already on Ask Aria: no floating button #}
+{% block ask_aria %}{% endblock %}
+
+{% block content %}
+{# Questions go to chatbot:stream from static/js/ask-aria.js. Aria explains only; it never changes orders or refunds. #}
+{% if is_staff_viewer %}{% url 'orders:staff_list' as help_url %}{% url 'orders:staff_list' as close_url %}
+{% elif username %}{% url 'orders:history' as help_url %}{% url 'products:browse' as close_url %}
+{% else %}{% url 'orders:lookup' as help_url %}{% url 'products:browse' as close_url %}{% endif %}
+<div class="aria-page">
+    <header class="page-heading">
+        <h1>Ask Aria</h1>
+        <p>An AI assistant that explains our policies. People confirm any changes.</p>
+    </header>
+
+    <div class="aria-columns aria-columns--main-aside">
+        <div class="sf-stack aria-hide-mobile">
+            <section class="aria-card" aria-labelledby="scope-heading">
+                <h2 id="scope-heading" class="h3">What Aria can do</h2>
+                <p class="sf-muted">Answer questions about store policies (returns, shipping, warranty, privacy) and cite the document it used. If it can't find a source, it says so instead of guessing.</p>
+                <p class="sf-muted">It can't place, cancel or refund anything. A person confirms every change.</p>
+                <span class="status-badge status-badge--success align-self-start"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">Explains and informs only</span>
+            </section>
+
+            <section class="aria-card" aria-labelledby="human-heading">
+                <h2 id="human-heading" class="h3">Need a person?</h2>
+                <p class="sf-muted">{% if is_staff_viewer %}Order changes and refund decisions are made from the staff screens.{% else %}Our team handles cancellations, refunds and anything Aria can't answer.{% endif %}</p>
+                <a class="text-action" href="{{ help_url }}">{% if is_staff_viewer %}Staff order list{% elif username %}Go to my orders{% else %}Find my order{% endif %}</a>
+            </section>
+        </div>
+
+        <section class="sf-assistant" aria-labelledby="assistant-heading">
+            <div class="sf-assistant__header">
+                <div class="sf-assistant__identity">
+                    <span class="status-badge status-badge--info"><img src="{% static 'img/icons/info.svg' %}" width="19" height="19" alt="">{% if is_staff_viewer %}Staff{% elif username %}Customer{% else %}Guest{% endif %}</span>
+                    <a class="aria-iconbtn" href="{{ close_url }}" aria-label="Close Ask Aria">
+                        <span class="sf-icon24"><img src="{% static 'img/icons/close.svg' %}" width="26" height="26" alt=""></span>
+                    </a>
+                </div>
+                <h2 id="assistant-heading">Ask Aria · AI assistant · can explain, can't take actions</h2>
+                <p>Answers come from Aria's policy documents{% if is_staff_viewer %} and staff guides{% endif %}.</p>
+            </div>
+
+            <div class="alert sf-alert-info mb-0">
+                <span class="alert-icon sf-icon24"><img src="{% static 'img/icons/alert-info.svg' %}" width="26" height="26" alt=""></span>
+                <p>Aria explains. People confirm changes to orders and refunds.</p>
+            </div>
+
+            {% if username %}
+            <ol class="sf-conversation" id="ask-conversation" aria-label="Conversation" aria-live="polite">
+                <li class="sf-bubble sf-bubble--assistant">
+                    <p class="sf-bubble__who">Aria · AI assistant</p>
+                    <p class="sf-bubble__text">Hi {{ username }}. Ask me about returns, shipping, warranty or privacy, and I'll point you to the policy I used.</p>
+                </li>
+            </ol>
+
+            <form class="sf-composer" id="ask-form" method="post" action="{% url 'chatbot:stream' %}"
+                  data-stream-url="{% url 'chatbot:stream' %}" data-help-url="{{ help_url }}"
+                  data-help-label="{% if is_staff_viewer %}Staff order list{% else %}Contact customer service{% endif %}"
+                  novalidate>
+                {% csrf_token %}
+                <div class="aria-field">
+                    <div class="aria-field__body">
+                        <label for="ask-message">Message Ask Aria</label>
+                        <textarea id="ask-message" name="message" rows="2" maxlength="{{ max_question_length }}"
+                                  placeholder="Ask about a policy" required aria-describedby="ask-status"></textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary" type="submit" id="ask-send">Send message</button>
+                <p id="ask-status" class="sf-ask-status" role="status"></p>
+                <noscript><p>Ask Aria needs JavaScript to send messages.</p></noscript>
+                <p>Chats are kept for 90 days, then anonymized.</p>
+            </form>
+            {% else %}
+            <div class="aria-card sf-signin-prompt">
+                <h3 class="h4 m-0">Sign in to ask Aria</h3>
+                <p class="sf-muted">Ask Aria is available to signed-in customers. Guests can still find an order with the order number and email.</p>
+                <a class="btn btn-primary" href="{% url 'accounts:login' %}">Sign in</a>
+                <a class="text-action" href="{% url 'accounts:register' %}">Create account</a>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if username %}<script src="{% static 'js/ask-aria.js' %}" defer></script>{% endif %}
+{% endblock %}

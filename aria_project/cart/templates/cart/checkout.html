@@ -1,173 +1,197 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Checkout{% endblock %}
 
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/checkout.css' %}">{% endblock %}
+
 {% block content %}
-<main class="container py-5">
-    <h1 class="h2 mb-4">Checkout</h1>
+<div class="aria-page">
+    <div class="checkout-subhead">
+        <a class="text-action" href="{% url 'cart:detail' %}">Back to cart</a>
+        <p>Secure checkout</p>
+    </div>
 
-    <div class="alert alert-warning" role="alert">Test payments: no real card is charged.</div>
+    <ol class="checkout-progress" aria-label="Checkout progress, step 2 of 4">
+        <li><img src="{% static 'img/icons/circle-check.svg' %}" width="12" height="12" alt="">Cart<span class="visually-hidden"> (done)</span></li>
+        <li aria-current="step">Checkout</li>
+        <li>Review</li>
+        <li>Done</li>
+    </ol>
 
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-    {% endfor %}
+    <div class="page-heading">
+        <h1>Shipping &amp; payment</h1>
+    </div>
+
+    <div class="prototype-notice" role="note">
+        <img src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+        <span>Test payments: no real card is charged.</span>
+    </div>
 
     {% if error %}
-    <div class="alert alert-danger" role="alert">{{ error }}</div>
+    <div class="alert alert-danger" role="alert">
+        <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+        <span>{{ error }}</span>
+    </div>
     {% endif %}
     {% if bad_region %}
     <div class="alert alert-danger" role="alert">
-        We can't calculate tax for this shipping address. Please edit its province or state in
-        <a href="{% url 'accounts:address_list' %}">your address book</a>.
+        <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+        <span>We can't calculate tax for this shipping address. Please edit its province or state in
+        <a href="{% url 'accounts:address_list' %}">your address book</a>.</span>
     </div>
     {% endif %}
     {% if form.non_field_errors %}
-    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+    <div class="alert alert-danger" role="alert">
+        <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+        <span>{% for e in form.non_field_errors %}{{ e }} {% endfor %}</span>
+    </div>
+    {% endif %}
+    {% if form.errors or form.ship_form.errors %}
+    <p class="checkout-error-text" role="alert">Check the highlighted fields below.</p>
     {% endif %}
 
     {% if is_guest %}
-    <p>Have an account? <a href="{% url 'accounts:login' %}">Log in</a> / <a href="{% url 'accounts:register' %}">Register</a></p>
+    <p class="mb-0">Have an account? <a href="{% url 'accounts:login' %}">Log in</a> / <a href="{% url 'accounts:register' %}">Register</a></p>
     {% endif %}
 
     <form method="post" id="checkout-form">
         {% csrf_token %}
         {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-        <div class="row g-4">
-            <div class="col-12 col-lg-7">
+        <div class="aria-columns aria-columns--main-aside">
+            <div class="checkout-stack">
                 {% if is_guest %}
-                <section class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Contact</h2>
-                        {% for field in form %}{% if field.name == 'contact_name' or field.name == 'contact_email' %}
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
-                        </div>
-                        {% endif %}{% endfor %}
-                    </div>
+                <section class="aria-card checkout-card" aria-labelledby="contact-heading">
+                    <div class="checkout-card__head"><h2 id="contact-heading">Contact</h2></div>
+                    {% for field in form %}{% if field.name == 'contact_name' or field.name == 'contact_email' %}
+                    {% include "cart/_checkout_field.html" %}
+                    {% endif %}{% endfor %}
                 </section>
                 {% endif %}
 
-                <section class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Shipping address</h2>
-                        {% if is_guest %}
-                            {% for field in form.ship_form %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
-                                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
-                            </div>
-                            {% endfor %}
-                        {% elif no_shipping_address %}
-                            <p class="mb-0">You don't have a shipping address yet.
-                                <a href="{% url 'accounts:address_create' %}">Add a shipping address</a> to continue.</p>
-                            {% if form.shipping_address.errors %}<div class="text-danger small mt-1">{{ form.shipping_address.errors }}</div>{% endif %}
-                        {% else %}
-                            {{ form.shipping_address }}
-                            {% if form.shipping_address.errors %}<div class="text-danger small mt-1">{{ form.shipping_address.errors }}</div>{% endif %}
-                            <a class="small" href="{% url 'accounts:address_list' %}">Manage addresses</a>
-                        {% endif %}
+                <section class="aria-card checkout-card" aria-labelledby="shipping-heading">
+                    <div class="checkout-card__head">
+                        <h2 id="shipping-heading">Shipping</h2>
+                        {% if not is_guest %}<a class="text-action" href="{% url 'accounts:address_list' %}">Manage addresses</a>{% endif %}
                     </div>
+                    {% if is_guest %}
+                        {% for field in form.ship_form %}
+                        {% include "cart/_checkout_field.html" %}
+                        {% endfor %}
+                    {% elif no_shipping_address %}
+                        <p>You don't have a shipping address yet.
+                            <a href="{% url 'accounts:address_create' %}">Add a shipping address</a> to continue.</p>
+                        {% for e in form.shipping_address.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+                    {% else %}
+                        {% include "cart/_checkout_field.html" with field=form.shipping_address %}
+                    {% endif %}
                 </section>
 
-                <section class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Billing address</h2>
-                        <div class="form-check mb-3">
-                            {{ form.billing_same }}
-                            <label class="form-check-label" for="{{ form.billing_same.id_for_label }}">{{ form.billing_same.label }}</label>
-                        </div>
-                        <p class="small text-body-secondary">Only needed if different from shipping.</p>
-                        {% if is_guest %}
-                            {% for field in form.bill_form %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
-                                {% if form.validate_billing and field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            {{ form.billing_address }}
-                            {% if form.billing_address.errors %}<div class="text-danger small mt-1">{{ form.billing_address.errors }}</div>{% endif %}
-                        {% endif %}
-                    </div>
+                <section class="aria-card checkout-card" aria-labelledby="billing-heading">
+                    <div class="checkout-card__head"><h2 id="billing-heading">Billing address</h2></div>
+                    <label class="checkout-option" for="{{ form.billing_same.id_for_label }}">
+                        {{ form.billing_same }}
+                        <span>{{ form.billing_same.label }}</span>
+                    </label>
+                    <p class="checkout-muted">Only needed if different from shipping.</p>
+                    {% if is_guest %}
+                        {% for field in form.bill_form %}
+                        {% include "cart/_checkout_field.html" with show_errors=form.validate_billing %}
+                        {% endfor %}
+                    {% else %}
+                        {% include "cart/_checkout_field.html" with field=form.billing_address %}
+                    {% endif %}
                 </section>
 
-                <section class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Shipping method</h2>
+                <section class="aria-card checkout-card" aria-labelledby="method-heading">
+                    <div class="checkout-card__head"><h2 id="method-heading">Shipping method</h2></div>
+                    <div class="checkout-options" role="radiogroup" aria-labelledby="method-heading">
                         {% for radio in form.shipping_method %}
-                        <div class="form-check">
+                        <label class="checkout-option" for="{{ radio.id_for_label }}">
                             {{ radio.tag }}
-                            <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
-                        </div>
+                            <span>{{ radio.choice_label }}</span>
+                        </label>
                         {% endfor %}
-                        {% if form.shipping_method.errors %}<div class="text-danger small mt-1">{{ form.shipping_method.errors }}</div>{% endif %}
-                        <button type="submit" class="btn btn-outline-secondary btn-sm mt-3" name="action" value="update" formnovalidate>Update totals</button>
+                    </div>
+                    {% for e in form.shipping_method.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+                    <div>
+                        <button type="submit" class="btn btn-secondary btn-sm mt-2" name="action" value="update" formnovalidate>Update totals</button>
                     </div>
                 </section>
 
-                <section class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Payment</h2>
-                        <p class="small text-body-secondary">Pick a test card. No card number is entered or stored.</p>
+                <section class="aria-card checkout-card" aria-labelledby="payment-heading">
+                    <div class="checkout-card__head"><h2 id="payment-heading">Payment</h2></div>
+                    <p class="checkout-muted">Pick a test card. No card number is entered or stored.</p>
+                    <div class="checkout-options" role="radiogroup" aria-labelledby="payment-heading">
                         {% for radio in form.test_card %}
-                        <div class="form-check">
+                        <label class="checkout-option" for="{{ radio.id_for_label }}">
                             {{ radio.tag }}
-                            <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
-                        </div>
+                            <span>{{ radio.choice_label }}</span>
+                        </label>
                         {% endfor %}
-                        {% if form.test_card.errors %}<div class="text-danger small mt-1">{{ form.test_card.errors }}</div>{% endif %}
                     </div>
+                    {% for e in form.test_card.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
                 </section>
             </div>
 
-            <div class="col-12 col-lg-5">
-                <section class="card border-0 shadow-sm">
-                    <div class="card-body">
-                        <h2 class="h5 mb-3">Order summary</h2>
-                        <table class="table table-sm align-middle">
-                            <tbody>
-                                {% for line in lines %}
-                                <tr>
-                                    <td>{{ line.product.name }} &times; {{ line.quantity }}</td>
-                                    <td class="text-end">{{ line.line_total }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr><th scope="row">Subtotal</th><td class="text-end">{{ subtotal }}</td></tr>
-                                {% if quote %}
-                                <tr><th scope="row">Shipping</th><td class="text-end">{{ quote.shipping_cost }}</td></tr>
-                                <tr><th scope="row">Tax ({{ quote.tax_label }})</th><td class="text-end">{{ quote.tax_amount }}</td></tr>
-                                <tr><th scope="row">Total</th><td class="text-end fw-semibold">{{ quote.total }}</td></tr>
-                                {% endif %}
-                            </tfoot>
-                        </table>
-                        {% if not quote %}
-                        <p class="small text-body-secondary">Enter your shipping address and select Update totals to see shipping, tax and your total.</p>
-                        {% endif %}
-                        <button type="submit" class="btn btn-primary w-100" data-place-order>Place order</button>
-                        <a class="btn btn-link w-100 mt-2" href="{% url 'cart:detail' %}">Back to cart</a>
-                    </div>
-                </section>
-            </div>
+            <aside class="aria-card checkout-summary" aria-labelledby="summary-heading">
+                <h2 class="checkout-summary__title" id="summary-heading">Order summary</h2>
+                <ul class="checkout-lines">
+                    {% for line in lines %}
+                    <li class="checkout-line">
+                        <div class="checkout-line__thumb" aria-hidden="true">No photo</div>
+                        <div class="checkout-line__text">
+                            <p class="checkout-line__name">{{ line.product.name }}</p>
+                            <p class="checkout-line__meta">Qty {{ line.quantity }} · ${{ line.line_total }}</p>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <dl>
+                    <div class="summary-row"><dt>Subtotal</dt><dd>${{ subtotal }}</dd></div>
+                    {% if quote %}
+                    <div class="summary-row"><dt>Shipping</dt><dd>${{ quote.shipping_cost }}</dd></div>
+                    <div class="summary-row"><dt>Tax ({{ quote.tax_label }})</dt><dd>${{ quote.tax_amount }}</dd></div>
+                    <div class="summary-row summary-row--total"><dt>Total</dt><dd>${{ quote.total }} CAD</dd></div>
+                    {% endif %}
+                </dl>
+                {% if not quote %}
+                <p class="checkout-muted mb-0">Enter your shipping address and select Update totals to see shipping, tax and your total.</p>
+                {% endif %}
+                <button type="submit" class="btn btn-accent w-100" data-place-order>
+                    <span class="aria-spinner btn-spinner" aria-hidden="true"></span>
+                    <span data-place-order-label>Place order{% if quote %} · ${{ quote.total }} CAD{% endif %}</span>
+                </button>
+                <p class="visually-hidden" role="status" aria-live="polite" data-place-order-status></p>
+            </aside>
         </div>
     </form>
-</main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
     // UI layer only: the server also rejects a second order for the same checkout token
     (function () {
         var form = document.getElementById('checkout-form');
         var button = form.querySelector('[data-place-order]');
+        var label = button.querySelector('[data-place-order-label]');
+        var status = form.querySelector('[data-place-order-status]');
+        var idle = label.textContent;
         form.addEventListener('submit', function (event) {
-            if (event.submitter === button) { button.disabled = true; }
+            if (event.submitter === button) {
+                button.disabled = true;
+                button.classList.add('is-processing');
+                label.textContent = 'Processing payment…';
+                status.textContent = 'Processing payment. Please keep this page open.';
+            }
         });
-        window.addEventListener('pageshow', function () { button.disabled = false; });
+        window.addEventListener('pageshow', function () {
+            button.disabled = false;
+            button.classList.remove('is-processing');
+            label.textContent = idle;
+            status.textContent = '';
+        });
     })();
 </script>
 {% endblock %}

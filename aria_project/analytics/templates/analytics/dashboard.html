@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin analytics{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/backoffice.css' %}">{% endblock %}
+
+{% block content %}
+<div class="aria-page">
+    <header class="page-heading">
+        <h1>Admin analytics</h1>
+        <p>{{ username }} · {{ generated_at|date:"j F Y, H:i" }} · Paid orders, CAD</p>
+    </header>
+
+    {% include "analytics/_kpis.html" %}
+
+    <div class="bo-view-toggle">
+        <p>Same data, two accessible views.</p>
+        <a class="btn btn-secondary" href="{% url 'analytics:data' %}">Show data table</a>
+    </div>
+
+    <section class="aria-card" aria-labelledby="revenue-heading">
+        <h2 id="revenue-heading" class="chart-title">
+            <span>Revenue · last 12 months</span>
+            <span>CAD · {{ monthly.0.month|date:"F Y" }}–{{ this_month|date:"F Y" }}</span>
+        </h2>
+        {% if peak_month %}
+        <div><span class="status-badge status-badge--info">Highest · {{ peak_month.month|date:"M Y" }} · ${{ peak_month.revenue|floatformat:"2g" }} CAD</span></div>
+        <figure class="mb-0">
+            <div class="bar-chart" aria-hidden="true">
+                {% for m in monthly %}
+                <div class="bar-chart__col{% if m.is_peak %} is-peak{% endif %}">
+                    <span class="bar-chart__value">{{ m.revenue|floatformat:"0g" }}</span>
+                    <div class="bar-chart__bar" style="height: {{ m.pct|stringformat:'s' }}%"></div>
+                    <span class="bar-chart__label">{{ m.month|date:"M" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <figcaption class="chart-note mt-2">Whole dollars per month. {{ this_month|date:"F" }} is month-to-date. Exact values are in the <a href="{% url 'analytics:data' %}#revenue-table-heading">revenue data table</a>.</figcaption>
+        </figure>
+        {% else %}
+        <p class="bo-empty">No paid orders in the last 12 months.</p>
+        {% endif %}
+    </section>
+
+    <section class="aria-card" aria-labelledby="daily-heading">
+        <h2 id="daily-heading" class="chart-title">
+            <span>Orders per day · last {{ days }} days</span>
+            <span>{{ day_start|date:"j M" }}–{{ today|date:"j M Y" }} · {{ daily_total|floatformat:"0g" }} paid orders</span>
+        </h2>
+        {% if peak_orders %}
+        <figure class="mb-0">
+            <div class="line-chart" aria-hidden="true">
+                <div class="line-chart__y"><span>{{ peak_orders }}</span><span>0</span></div>
+                <div class="line-chart__plot">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+                        <line x1="0" y1="0" x2="100" y2="0" stroke="#d9d0c1" stroke-width="1" vector-effect="non-scaling-stroke"/>
+                        <line x1="0" y1="50" x2="100" y2="50" stroke="#d9d0c1" stroke-width="1" vector-effect="non-scaling-stroke"/>
+                        <line x1="0" y1="100" x2="100" y2="100" stroke="#d9d0c1" stroke-width="1" vector-effect="non-scaling-stroke"/>
+                        <path d="{{ line_path }}" fill="none" stroke="#0e6e66" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                        {% for x, y in line_points %}<path d="M{{ x }} {{ y }} l0 0" stroke="#0e6e66" stroke-width="6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>{% endfor %}
+                    </svg>
+                    <div class="line-chart__x"><span>{{ day_start|date:"j M" }}</span><span>{{ today|date:"j M" }}</span></div>
+                </div>
+            </div>
+            <figcaption class="chart-note mt-2">Peak {{ peak_day.orders }} · {{ peak_day.day|date:"j M" }}. Latest {{ latest_day.orders }} · {{ latest_day.day|date:"j M" }}. Exact values are in the <a href="{% url 'analytics:data' %}#daily-table-heading">daily data table</a>.</figcaption>
+        </figure>
+        {% else %}
+        <p class="bo-empty">No paid orders in the last {{ days }} days.</p>
+        {% endif %}
+    </section>
+
+    <div class="bo-columns-2">
+        <section class="aria-card" aria-labelledby="status-heading">
+            <h2 id="status-heading" class="h3">Orders by status · last {{ days }} days</h2>
+            {% if by_status %}
+            <ul class="hbar-list">
+                {% for s in by_status %}
+                <li>
+                    <span>{{ s.label }}</span>
+                    <span class="hbar-track" aria-hidden="true"><span class="hbar-fill d-block" style="width: {{ s.pct|stringformat:'s' }}%"></span></span>
+                    <span class="hbar-value">{{ s.orders|floatformat:"0g" }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="bo-empty">No orders in the last {{ days }} days.</p>
+            {% endif %}
+        </section>
+
+        <section class="aria-card" aria-labelledby="top-heading">
+            <h2 id="top-heading" class="h3">Top products by units · last {{ days }} days</h2>
+            {% if top_products %}
+            <ul class="hbar-list">
+                {% for p in top_products %}
+                <li>
+                    <span>{{ p.product__name }}</span>
+                    <span class="hbar-track" aria-hidden="true"><span class="hbar-fill d-block" style="width: {{ p.pct|stringformat:'s' }}%"></span></span>
+                    <span class="hbar-value">{{ p.units|floatformat:"0g" }} units</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="bo-empty">No products sold in the last {{ days }} days.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="aria-card" aria-labelledby="low-stock-heading">
+        <h2 id="low-stock-heading" class="h3">Low stock · at or below reorder level</h2>
+        {% include "analytics/_low_stock.html" %}
+    </section>
+
+    {% include "analytics/_refunds.html" %}
+</div>
+{% endblock %}

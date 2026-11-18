@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ state_label }}{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/backoffice.css' %}">{% endblock %}
+
+{% block content %}
+{% url 'refunds:staff_review' as review_url %}
+<div class="aria-page">
+    <div class="prototype-notice" role="note">
+        <img src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+        <div>
+            <strong>Preview: refunds aren't live yet; no action is taken.</strong>
+            Every name, amount and risk label on this page is sample data. The buttons only switch between the designed states.
+        </div>
+    </div>
+
+    <nav aria-label="Preview states">
+        <ul class="chip-row list-unstyled mb-0">
+            {% for key, label in states %}
+            <li><a class="chip" href="{{ review_url }}?state={{ key }}"{% if key == state %} aria-current="true"{% endif %}>{{ label }}</a></li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    <header class="page-heading">
+        <h1>{{ state_label }}</h1>
+        <p>{{ username }} · Refund request {{ refund.reference }} · {{ refund.order_ref }}</p>
+    </header>
+
+    {% if state == 'processing' %}
+    <div class="alert alert-warning mb-0" role="status">
+        <img class="alert-icon" src="{% static 'img/icons/info-warning.svg' %}" width="19.25" height="19" alt="">
+        <div class="bo-alert-text">
+            <span class="alert-title">Refund processing</span>
+            <span>Please wait. The original payment method is being refunded. Repeat approval is unavailable.</span>
+        </div>
+    </div>
+    {% elif state == 'approved' %}
+    <div class="alert alert-success mb-0" role="status">
+        <img class="alert-icon" src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">
+        <div class="bo-alert-text">
+            <span class="alert-title">Refund approved</span>
+            <span>Refund approved · ${{ refund.amount }} CAD to {{ refund.payment_display }} · Approved by {{ username }} (sample)</span>
+        </div>
+    </div>
+    {% elif state == 'declined' %}
+    <div class="alert alert-success mb-0" role="status">
+        <img class="alert-icon" src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">
+        <div class="bo-alert-text">
+            <span class="alert-title">Refund declined</span>
+            <span>Decision recorded · {{ username }} (sample). The customer will see the reason in their order details.</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="aria-columns aria-columns--main-aside">
+        <div class="bo-stack">
+            <section class="aria-card" aria-labelledby="summary-heading">
+                <h2 id="summary-heading" class="h3">Order summary</h2>
+                <div class="bo-order-item">
+                    <div class="bo-photo-placeholder bo-photo-placeholder--thumb" aria-hidden="true">Photo</div>
+                    <div>
+                        <p class="bo-strong">{{ refund.item_name }}</p>
+                        <p class="bo-muted">{{ refund.item_detail }}</p>
+                        <p class="bo-strong">${{ refund.amount }} CAD</p>
+                    </div>
+                </div>
+                <div class="bo-meta">
+                    <p>Customer · {{ refund.customer }} · {{ refund.customer_email }}</p>
+                    <p>Order · {{ refund.order_ref }} · {{ refund.order_date }}</p>
+                </div>
+                <div><span class="status-badge status-badge--success"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">Delivered</span></div>
+                <div class="bo-meta">
+                    <p>Payment · {{ refund.payment_display }}</p>
+                    <p class="bo-strong">Eligible refund amount · ${{ refund.amount }} CAD</p>
+                    <p class="bo-muted">Original paid amount {{ refund.amount }} CAD. No shipping requested.</p>
+                </div>
+            </section>
+
+            <section class="aria-card" aria-labelledby="reason-heading">
+                <div>
+                    <h2 id="reason-heading" class="h3 mb-0">Customer’s reason</h2>
+                    <p class="bo-card-subhead">{{ refund.reason }}</p>
+                    <p class="bo-card-subhead">“{{ refund.reason_text }}”</p>
+                    <p class="bo-card-subhead bo-muted">{{ refund.submitted }} · Selected item: Qty 1</p>
+                </div>
+                {% url 'chat:ask' as ask_url %}
+                {% if ask_url %}<a class="text-action" href="{{ ask_url }}">Ask Aria about this policy</a>{% endif %}
+            </section>
+
+            <section class="aria-card bo-history" aria-labelledby="history-heading">
+                <div>
+                    <h2 id="history-heading" class="h3 mb-0">Refund history</h2>
+                    <p class="bo-card-subhead">No previous refund on {{ refund.order_ref }}.</p>
+                </div>
+                <hr class="divider">
+                <div>
+                    {% for past in refund.history %}
+                    <p>{{ past.order_ref }} · ${{ past.amount }} CAD · {{ past.decision }} (sample)</p>
+                    {% endfor %}
+                    <p class="bo-muted">History supports review; it does not determine the decision.</p>
+                </div>
+            </section>
+        </div>
+
+        <div class="bo-stack">
+            <section class="aria-card bo-risk" aria-labelledby="risk-heading">
+                <h2 id="risk-heading" class="h3">Risk context · staff only</h2>
+                <p class="bo-muted small">Sample risk labels, not a real score.</p>
+                <div><span class="status-badge status-badge--success"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">Low · current request</span></div>
+                <p>Unopened item, within 30 days; no earlier refund on this order.</p>
+                <hr class="divider">
+                <div><span class="status-badge status-badge--warning"><img src="{% static 'img/icons/loader-circle.svg' %}" width="19" height="19" alt="">Medium · example threshold</span></div>
+                <p class="bo-muted">Repeated requests need a closer manual check.</p>
+                <div><span class="status-badge status-badge--error"><img src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">High · example threshold</span></div>
+                <p class="bo-muted">Duplicate attempts or mismatched records require escalation. Risk labels never auto-decide a refund.</p>
+            </section>
+
+            {% if state == 'decline-reason' %}
+            <section class="aria-card" aria-labelledby="decline-heading">
+                <h2 id="decline-heading" class="h3">Reason required</h2>
+                <div class="aria-field-group">
+                    <div class="aria-field">
+                        <div class="aria-field__body">
+                            <label for="decline-reason">Reason for declining (required)</label>
+                            <textarea id="decline-reason" rows="3" readonly aria-describedby="decline-help">{{ refund.decline_reason }}</textarea>
+                        </div>
+                    </div>
+                    <p class="bo-muted mb-0" id="decline-help">The customer can read this reason. (Preview: this text is sample data and can't be submitted.)</p>
+                </div>
+                <div class="bo-actions">
+                    <a class="btn btn-primary" href="{{ review_url }}?state=declined">Confirm decline</a>
+                    <a class="btn btn-secondary" href="{{ review_url }}?state=review">Cancel · return to review</a>
+                </div>
+            </section>
+            {% elif state == 'declined' %}
+            <section class="aria-card" aria-labelledby="receipt-heading">
+                <h2 id="receipt-heading" class="h3">Decline receipt</h2>
+                <div><span class="status-badge status-badge--error"><img src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">Refund declined</span></div>
+                <div class="bo-meta">
+                    <p>Reason: {{ refund.decline_reason }}</p>
+                    <p class="bo-muted">Recorded by {{ username }} (sample)</p>
+                </div>
+                <a class="btn btn-secondary w-100" href="{% url 'refunds:staff_queue' %}">Back to refunds</a>
+            </section>
+            {% else %}
+            <section class="aria-card" aria-labelledby="approval-heading">
+                <div>
+                    <h2 id="approval-heading" class="h3 mb-0">Refund approval</h2>
+                    <p class="bo-card-subhead">{{ refund.order_ref }} · ${{ refund.amount }} CAD · {{ refund.payment_display }}</p>
+                </div>
+                {% if state == 'processing' %}
+                <div class="bo-processing" role="status">
+                    <div class="aria-spinner" aria-hidden="true"></div>
+                    <span>Processing refund…</span>
+                </div>
+                <p class="bo-muted mb-0">Please wait. Your decision is being recorded.</p>
+                <a class="text-action" href="{{ review_url }}?state=approved">Preview the approved state</a>
+                {% elif state == 'approved' %}
+                <div class="alert alert-success mb-0">
+                    <img class="alert-icon" src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">
+                    <span>Refund approved · ${{ refund.amount }} CAD to {{ refund.payment_display }} · Approved by {{ username }} (sample)</span>
+                </div>
+                {% else %}
+                <div class="bo-actions">
+                    <a class="btn btn-primary" href="{{ review_url }}?state=processing">Approve refund</a>
+                    <a class="btn btn-secondary" href="{{ review_url }}?state=decline-reason">Decline · reason required</a>
+                </div>
+                <p class="bo-muted mb-0">Approval returns the eligible amount to the original payment method.</p>
+                {% endif %}
+            </section>
+            {% if state == 'approved' %}
+            <a class="btn btn-secondary" href="{% url 'refunds:staff_queue' %}">Back to refunds</a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

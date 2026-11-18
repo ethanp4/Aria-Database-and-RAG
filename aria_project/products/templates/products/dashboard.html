@@ -3,55 +3,37 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block dashboard_content %}
-<main class="container py-5">
-    <header class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
-        <div>
-            <h1 class="h2 mb-1">Dashboard</h1>
-            <p class="text-body-secondary mb-0">A quick overview of your store.</p>
-        </div>
+<div class="aria-page">
+    <header class="page-heading">
+        <h1>Dashboard</h1>
+        <p>A quick overview of your store.</p>
     </header>
 
-    {% if messages %}
-    <div class="mb-4" aria-live="polite">
-        {% for message in messages %}
-        <div class="alert alert-success mb-2" role="status">{{ message }}</div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <section class="mb-5" aria-labelledby="overview-heading">
-        <h2 id="overview-heading" class="h4 mb-3">Overview</h2>
-        <div class="row g-3">
-            <div class="col-12 col-sm-6 col-lg-4">
-                <article class="card h-100 border-0 shadow-sm">
-                    <div class="card-body">
-                        <h3 class="h6 text-body-secondary">Accounts</h3>
-                        <p class="display-6 fw-semibold mb-0">{{ account_count }}</p>
-                    </div>
-                </article>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-4">
-                <article class="card h-100 border-0 shadow-sm">
-                    <div class="card-body">
-                        <h3 class="h6 text-body-secondary">Products</h3>
-                        <p class="display-6 fw-semibold mb-0">{{ product_count }}</p>
-                    </div>
-                </article>
-            </div>
+    <section aria-labelledby="overview-heading" class="bo-stack">
+        <h2 id="overview-heading" class="visually-hidden">Overview</h2>
+        <div class="kpi-grid">
+            <article class="aria-card kpi-tile">
+                <h3 class="kpi-label">Accounts</h3>
+                <p class="kpi-value">{{ account_count }}</p>
+            </article>
+            <article class="aria-card kpi-tile">
+                <h3 class="kpi-label">Products</h3>
+                <p class="kpi-value">{{ product_count }}</p>
+            </article>
         </div>
     </section>
 
-    <section aria-labelledby="products-heading" class="py-2">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <h2 id="products-heading" class="h4 mb-0">Products</h2>
-                <a class="mt-2" href="{% url 'products:product_create' %}">Add product</a>
+    <section aria-labelledby="products-heading" class="aria-card">
+        <div class="bo-section-head">
+            <div class="bo-section-title">
+                <h2 id="products-heading" class="h3">Products</h2>
+                <a class="btn btn-sm btn-secondary" href="{% url 'products:product_create' %}">Add product</a>
             </div>
-            <span class="text-body-secondary small">{{ product_count }} total</span>
+            <span class="bo-muted small">{{ product_count }} total</span>
         </div>
         {% if products %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
+        <div class="table-wrap">
+            <table class="table table-hover align-middle">
                 <caption class="visually-hidden">Products with price, stock, status, and edit actions</caption>
                 <thead>
                     <tr>
@@ -74,13 +56,13 @@
                         <td>{{ product.category }}</td>
                         <td>
                             {% if product.is_active %}
-                            <span class="badge text-bg-success">Active</span>
+                            <span class="status-badge status-badge--success">Active</span>
                             {% else %}
-                            <span class="badge text-bg-secondary">Inactive</span>
+                            <span class="status-badge status-badge--neutral">Inactive</span>
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="{% url 'products:product_edit' product.product_id %}" aria-label="Edit {{ product.name }}">Edit</a>
+                            <a class="btn btn-sm btn-secondary" href="{% url 'products:product_edit' product.product_id %}" aria-label="Edit {{ product.name }}">Edit</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -89,26 +71,24 @@
         </div>
         {% include "products/_dashboard_pagination.html" with pages=product_pages anchor="products-heading" label="Product pages" %}
         {% else %}
-        <div class="card border-0 bg-body-tertiary">
-            <div class="card-body py-4 text-center">
-                <h3 class="h5">No products yet</h3>
-                <p class="text-body-secondary">Add a product and it will display here.</p>
-            </div>
+        <div class="bo-empty">
+            <h3 class="h4 mb-1">No products yet</h3>
+            <p class="mb-0">Add a product and it will display here.</p>
         </div>
         {% endif %}
     </section>
 
-    <section aria-labelledby="categories" class="py-2">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <h2 id="categories" class="h4 mb-0">Categories</h2>
-                <a class="mt-2" href="{% url 'products:category_create' %}">Add category</a>
+    <section aria-labelledby="categories" class="aria-card">
+        <div class="bo-section-head">
+            <div class="bo-section-title">
+                <h2 id="categories" class="h3">Categories</h2>
+                <a class="btn btn-sm btn-secondary" href="{% url 'products:category_create' %}">Add category</a>
             </div>
-            <span class="text-body-secondary small">{{ category_count }} total</span>
+            <span class="bo-muted small">{{ category_count }} total</span>
         </div>
         {% if categories %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
+        <div class="table-wrap">
+            <table class="table table-hover align-middle">
                 <caption class="visually-hidden">Categories with name, description, and edit actions</caption>
                 <thead>
                     <tr>
@@ -125,7 +105,7 @@
                         <td>{{ category.description }}</td>
                         <td>{{ category.product_count }}</td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="{% url 'products:category_edit' category.category_id %}" aria-label="Edit {{ category.name }}">Edit</a>
+                            <a class="btn btn-sm btn-secondary" href="{% url 'products:category_edit' category.category_id %}" aria-label="Edit {{ category.name }}">Edit</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -134,25 +114,23 @@
         </div>
         {% include "products/_dashboard_pagination.html" with pages=category_pages anchor="categories" label="Category pages" %}
         {% else %}
-        <div class="card border-0 bg-body-tertiary">
-            <div class="card-body py-4 text-center">
-                <h3 class="h5">No categories yet</h3>
-                <p class="text-body-secondary">All categories will be displayed here.</p>
-            </div>
+        <div class="bo-empty">
+            <h3 class="h4 mb-1">No categories yet</h3>
+            <p class="mb-0">All categories will be displayed here.</p>
         </div>
         {% endif %}
     </section>
 
-    <section aria-labelledby="inventory-movements" class="py-2">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <h2 id="inventory-movements" class="h4 mb-0">Inventory Movements</h2>
+    <section aria-labelledby="inventory-movements" class="aria-card">
+        <div class="bo-section-head">
+            <div class="bo-section-title">
+                <h2 id="inventory-movements" class="h3">Inventory Movements</h2>
             </div>
-            <span class="text-body-secondary small">{{ inventory_movement_count }} total</span>
+            <span class="bo-muted small">{{ inventory_movement_count }} total</span>
         </div>
         {% if inventory_movements %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
+        <div class="table-wrap">
+            <table class="table table-hover align-middle">
                 <caption class="visually-hidden">Inventory movements with product, quantity, reason, and timestamp</caption>
                 <thead>
                     <tr>
@@ -176,25 +154,23 @@
         </div>
         {% include "products/_dashboard_pagination.html" with pages=movement_pages anchor="inventory-movements" label="Inventory movement pages" %}
         {% else %}
-        <div class="card border-0 bg-body-tertiary">
-            <div class="card-body py-4 text-center">
-                <h3 class="h5">No inventory movements yet</h3>
-                <p class="text-body-secondary">Inventory movements will appear here as they are logged.</p>
-            </div>
+        <div class="bo-empty">
+            <h3 class="h4 mb-1">No inventory movements yet</h3>
+            <p class="mb-0">Inventory movements will appear here as they are logged.</p>
         </div>
         {% endif %}
     </section>
 
-    <section aria-labelledby="profiles" class="py-2">
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <h2 id="profiles" class="h4 mb-0">Profiles</h2>
+    <section aria-labelledby="profiles" class="aria-card">
+        <div class="bo-section-head">
+            <div class="bo-section-title">
+                <h2 id="profiles" class="h3">Profiles</h2>
             </div>
-            <span class="text-body-secondary small">{{ profile_count }} total</span>
+            <span class="bo-muted small">{{ profile_count }} total</span>
         </div>
         {% if profiles %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
+        <div class="table-wrap">
+            <table class="table table-hover align-middle">
                 <caption class="visually-hidden">Profiles with user, email, and edit actions</caption>
                 <thead>
                     <tr>
@@ -221,7 +197,7 @@
                         <td>{{ profile.created_at|date:"Y-m-d H:i:s" }}</td>
                         <td>{{ profile.updated_at|date:"Y-m-d H:i:s" }}</td>
                         <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:update_profile' %}?account_id={{ profile.account_id }}" aria-label="Edit {{ profile.account.username }}">Edit</a>
+                            <a class="btn btn-sm btn-secondary" href="{% url 'accounts:update_profile' %}?account_id={{ profile.account_id }}" aria-label="Edit {{ profile.account.username }}">Edit</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -230,15 +206,13 @@
         </div>
         {% include "products/_dashboard_pagination.html" with pages=profile_pages anchor="profiles" label="Profile pages" %}
         {% else %}
-        <div class="card border-0 bg-body-tertiary">
-            <div class="card-body py-4 text-center">
-                <h3 class="h5">No profiles yet</h3>
-                <p class="text-body-secondary">All user profiles will be displayed here.</p>
-            </div>
+        <div class="bo-empty">
+            <h3 class="h4 mb-1">No profiles yet</h3>
+            <p class="mb-0">All user profiles will be displayed here.</p>
         </div>
         {% endif %}
     </section>
 
-</main>
+</div>
 {% endblock %}
    

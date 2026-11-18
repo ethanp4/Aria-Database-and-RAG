@@ -1,77 +1,119 @@
 {% extends "products/dashboard_base.html" %}
+{% load static %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block dashboard_content %}
-<main class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8 col-xl-7">
-            <div class="mb-4">
-                <a href="{{ request.GET.next|default:'/dashboard/' }}" class="link-secondary">← Go Back</a>
-            </div>
-            <section class="card border-0 shadow-sm" aria-labelledby="product-form-heading">
-                <div class="card-body p-4 p-md-5">
-                    <h1 id="product-form-heading" class="h2 mb-4">{{ page_title }}</h1>
-                    <form method="post">
-                        {% csrf_token %}
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
-                        {% endif %}
-                        {% for hidden in form.hidden_fields %}
-                            {{ hidden }}
-                            {% if hidden.errors %}
-                            <div class="alert alert-danger" role="alert">Please reload this page and try again.</div>
-                            {% endif %}
-                        {% endfor %}
+<div class="aria-page">
+    <a class="text-action" href="{{ request.GET.next|default:'/dashboard/' }}"><span aria-hidden="true">&larr;&nbsp;</span>Go back</a>
 
-                        {% for field in form.visible_fields %}
-                            {% if field.name == 'inventory_reason' %}
-                            {% elif field.name == 'is_active' %}
-                            <div class="form-check mb-3">
-                                {{ field }}
-                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {% if field.errors %}
-                                <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.name == 'category' %}
-                                    {% if product %}
-                                    <a class="d-inline-block mt-2" href="{% url 'products:category_create' %}?for_product={{ product.product_id }}&next={{ request.get_full_path }}">New category</a>
-                                    {% else %}
-                                    <a class="d-inline-block mt-2" href="{% url 'products:category_create' %}?next={{ request.get_full_path }}">New category</a>
-                                    {% endif %}
-                                {% endif %}
-                                {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% if field.errors %}
-                                <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
-                            {% if field.name == 'stock_quantity' and product %}
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.inventory_reason.id_for_label }}">{{ form.inventory_reason.label }}</label>
-                                {{ form.inventory_reason }}
-                                {% if form.inventory_reason.errors %}
-                                <div class="text-danger small mt-1">{{ form.inventory_reason.errors }}</div>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                            {% endif %}
-                        {% endfor %}
+    <header class="page-heading">
+        <h1 id="product-form-heading">{{ page_title }}</h1>
+        <p>{{ username }}{% if product %} · SKU {{ product.sku }}{% endif %} · Product catalogue</p>
+    </header>
 
-                        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-                            <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
-                            <a class="btn btn-outline-secondary" href="{{ request.GET.next|default:'/dashboard/' }}">Cancel</a>
-                        </div>
-                    </form>
-                </div>
-            </section>
+    {% if form.errors %}
+    <div class="alert alert-danger mb-0" role="alert">
+        <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+        <div class="bo-alert-text">
+            <span class="alert-title">Product could not be saved</span>
+            {% if form.non_field_errors %}{% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}{% else %}<span>Correct the highlighted fields. Your other edits are preserved.</span>{% endif %}
         </div>
     </div>
-</main>
+    {% endif %}
+
+    <div class="aria-columns aria-columns--main-aside">
+        <section class="aria-card" aria-labelledby="product-details-heading">
+            <h2 id="product-details-heading" class="h3">Product details</h2>
+            <form method="post" class="bo-form">
+                {% csrf_token %}
+                {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                    {% if hidden.errors %}
+                    <div class="alert alert-danger mb-0" role="alert">Please reload this page and try again.</div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="bo-field-grid">
+                {% for field in form.visible_fields %}
+                    {% if field.name == 'inventory_reason' %}
+                    {% elif field.name == 'is_active' %}
+                    <div class="aria-field-group bo-span-2">
+                        <div class="form-check">
+                            {{ field }}
+                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        </div>
+                        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                    </div>
+                    {% else %}
+                    <div class="aria-field-group{% if field.name not in 'unit_price currency stock_quantity reorder_level' %} bo-span-2{% endif %}">
+                        <div class="aria-field{% if field.errors %} is-invalid{% endif %}">
+                            <div class="aria-field__body">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                            </div>
+                        </div>
+                        {% if field.help_text %}<p class="bo-field-help">{{ field.help_text }}</p>{% endif %}
+                        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                        {% if field.name == 'category' %}
+                            {% if product %}
+                            <a class="text-action" href="{% url 'products:category_create' %}?for_product={{ product.product_id }}&next={{ request.get_full_path }}">New category</a>
+                            {% else %}
+                            <a class="text-action" href="{% url 'products:category_create' %}?next={{ request.get_full_path }}">New category</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if field.name == 'reorder_level' and product %}
+                    <div class="aria-field-group bo-span-2">
+                        <div class="aria-field{% if form.inventory_reason.errors %} is-invalid{% endif %}">
+                            <div class="aria-field__body">
+                                <label for="{{ form.inventory_reason.id_for_label }}">{{ form.inventory_reason.label }}</label>
+                                {{ form.inventory_reason }}
+                            </div>
+                        </div>
+                        <p class="bo-field-help">Required when you change the stock quantity.</p>
+                        {% if form.inventory_reason.errors %}<div class="field-error">{{ form.inventory_reason.errors }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                {% endfor %}
+                </div>
+
+                <div class="bo-form-actions">
+                    <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+                    <a class="btn btn-secondary" href="{{ request.GET.next|default:'/dashboard/' }}">Cancel</a>
+                </div>
+            </form>
+        </section>
+
+        <div class="bo-stack">
+            <section class="aria-card" aria-labelledby="product-images-heading">
+                <h2 id="product-images-heading" class="h3">Product images</h2>
+                <div class="bo-photo-placeholder bo-photo-placeholder--hero" role="img" aria-label="No product photo">No product photo</div>
+                <p class="bo-muted mb-0">Product photos aren't supported yet, so the catalogue shows a placeholder tile.</p>
+            </section>
+
+            {% if product %}
+            <section class="aria-card" aria-labelledby="catalogue-status-heading">
+                <h2 id="catalogue-status-heading" class="h3">Catalogue status</h2>
+                <div>
+                {% if not product.is_active %}
+                    <span class="status-badge status-badge--neutral">Hidden from catalogue</span>
+                {% elif product.stock_quantity <= 0 %}
+                    <span class="status-badge status-badge--error"><img src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">Out of stock</span>
+                {% elif product.stock_quantity <= product.reorder_level %}
+                    <span class="status-badge status-badge--warning"><img src="{% static 'img/icons/loader-circle.svg' %}" width="19" height="19" alt="">Low stock · {{ product.stock_quantity }} available</span>
+                {% else %}
+                    <span class="status-badge status-badge--success"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">In stock · {{ product.stock_quantity }} available</span>
+                {% endif %}
+                </div>
+                <div class="bo-meta">
+                    <p class="bo-strong">${{ product.unit_price }} {{ product.currency }}</p>
+                    <p class="bo-strong">Ships across Canada and the US</p>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}

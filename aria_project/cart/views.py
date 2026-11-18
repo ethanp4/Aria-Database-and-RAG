@@ -30,7 +30,7 @@ def cart_detail_view(request):
     return render(request, 'cart/detail.html', {
         'lines': lines,
         'subtotal': cart.subtotal(),
-        'has_stock_problem': any(l.quantity > l.product.stock_quantity for l in lines),
+        'has_stock_problem': any(line.quantity > line.product.stock_quantity for line in lines),
     })
 
 
@@ -52,7 +52,11 @@ def cart_add_view(request, product_id):
 def cart_update_view(request, product_id):
     form = UpdateCartForm(request.POST)
     if form.is_valid():
-        Cart(request).set(product_id, form.cleaned_data['quantity'])
+        qty = form.cleaned_data['quantity']
+        # same gate as cart:add; removing (qty 0) stays allowed so dropped items can be cleared
+        if qty > 0:
+            get_object_or_404(Product, pk=product_id, is_active=True)
+        Cart(request).set(product_id, qty)
         messages.success(request, 'Your cart was updated.')
     else:
         messages.error(request, 'Please enter a quantity between 0 and 99.')

@@ -1,12 +1,29 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Dive gear{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/storefront.css' %}">{% endblock %}
 
 {% block content %}
-<div class="card-center">
-    <div class="card">
-        <h1>Welcome</h1>
-        <p>This is the home page.</p>
-    </div>
+<div class="aria-page">
+    <header class="page-heading">
+        <h1>Welcome to Aria</h1>
+        <p>Purpose-built gear for wherever the water takes you.</p>
+    </header>
+
+    {% include "products/_hero.html" with hero_cta=True %}
+
+    {% if nav_categories %}
+    <nav class="sf-stack-sm" aria-labelledby="home-categories-heading">
+        <h2 id="home-categories-heading" class="section-heading">Shop by category</h2>
+        <ul class="chip-row list-unstyled m-0">
+            {% for category in nav_categories %}
+            <li><a class="chip" href="{% url 'products:browse' %}?category={{ category.pk }}">{{ category.name }}</a></li>
+            {% endfor %}
+            <li><a class="chip" href="{% url 'products:browse' %}">All gear</a></li>
+        </ul>
+    </nav>
+    {% endif %}
 </div>
 {% endblock %}

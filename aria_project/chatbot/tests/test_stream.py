@@ -145,6 +145,15 @@ class RefusalTests(TestCase):
             parsed = events(post(self.client))
         self.assertEqual([e for e, _ in parsed], ['sources', 'error'])
 
+    @override_settings(OLLAMA_BASE_URL='file:///etc')
+    @mock.patch.object(views, 'urlopen')
+    def test_non_http_ollama_url_is_never_opened(self, chat_urlopen, _embed):
+        # a misconfigured base URL must not make urlopen read local files (bandit B310)
+        with mock.patch.object(views, '_search_chunks', return_value=[chunk()]):
+            parsed = events(post(self.client))
+        self.assertEqual([e for e, _ in parsed], ['sources', 'error'])
+        chat_urlopen.assert_not_called()
+
 
 class PgvectorSearchTests(TestCase):
     """Runs the real SQL against pgvector (skipped where the extension isn't installed)."""

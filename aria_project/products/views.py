@@ -1,16 +1,13 @@
-import math
-
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db.models.aggregates import Count
-from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.db import transaction
 
 from accounts.models import Account, Profile
-from accounts.permissions import ROLE_ADMIN, role_required
+from accounts.permissions import ROLE_ADMIN, customer_or_guest, role_required
 from cart.forms import AddToCartForm
 from .forms import BrowseFiltersForm, CategoryForm, ProductForm
 from .models import Category, InventoryMovement, Product
@@ -175,7 +172,8 @@ def browse_view(request):
     })
 
 
-# public product page; inactive products 404
+# public product page (guests and customers only); inactive products 404
+@customer_or_guest
 def product_detail_view(request, product_id):
     product = get_object_or_404(
         Product.objects.select_related('category'), pk=product_id, is_active=True)

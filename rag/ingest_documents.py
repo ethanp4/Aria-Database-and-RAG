@@ -144,7 +144,7 @@ def main():
             (source_path, chunk_count),
           )
 
-        for row, embedding in zip(rows, embeddings):
+        for row, embedding in zip(rows, embeddings, strict=True):
           source_path, chunk_index, title, heading, content, document_hash = row
           cursor.execute("""
             INSERT INTO rag_document_chunks

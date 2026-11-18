@@ -1,17 +1,60 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Order #{{ order.order_id }}{% endblock %}
 
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/checkout.css' %}">{% endblock %}
+
 {% block content %}
-<main class="container py-5">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-    {% endfor %}
-    {% if is_guest %}
-    <div class="alert alert-info" role="alert">Bookmark this page to check your order later.</div>
-    {% else %}
-    <p><a class="text-decoration-none" href="{% url 'orders:history' %}">&larr; My orders</a></p>
+<div class="aria-page">
+    {% if not is_guest %}
+    <a class="text-action" href="{% url 'orders:history' %}"><span aria-hidden="true">&larr;&nbsp;</span>My orders</a>
     {% endif %}
-    {% include "orders/_order_body.html" %}
-</main>
+
+    <div class="aria-columns aria-columns--main-aside">
+        <section class="aria-card" aria-label="Order details">
+            {% include "orders/_order_body.html" %}
+        </section>
+
+        <div class="checkout-stack">
+            {% if is_guest %}
+            <div class="alert alert-info mb-0" role="note">
+                <img class="alert-icon" src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+                <span>Bookmark this page to check your order later.</span>
+            </div>
+            {% endif %}
+
+            {# every panel below is driven by order.status only, never by a flash message #}
+            {% if order.status == 'PENDING_PAYMENT' %}
+            <section class="aria-card checkout-card" aria-labelledby="processing-heading">
+                <div class="order-processing">
+                    <span class="aria-spinner" aria-hidden="true"></span>
+                    <div>
+                        <h2 class="h3 mb-0" id="processing-heading">Processing payment</h2>
+                        <p class="checkout-muted">This order is not confirmed yet. Refresh this page in a moment.</p>
+                    </div>
+                </div>
+            </section>
+            {% elif order.status == 'PAYMENT_FAILED' %}
+            <section class="aria-card checkout-card" aria-labelledby="failed-heading">
+                <h2 class="h3 mb-0" id="failed-heading">Payment didn't go through</h2>
+                <p class="checkout-muted">This order was not placed. If you see a charge, it will be reversed. Contact us if it isn't.</p>
+            </section>
+            {% elif order.status == 'OUT_OF_STOCK' %}
+            <section class="aria-card checkout-card" aria-labelledby="oos-heading">
+                <h2 class="h3 mb-0" id="oos-heading">Item unavailable</h2>
+                <p class="checkout-muted">This order was not placed because an item sold out.</p>
+            </section>
+            {% endif %}
+
+            {% if not is_guest %}{% if order.status == 'CONFIRMED' or order.status == 'SHIPPED' or order.status == 'DELIVERED' %}
+            <section class="aria-card checkout-card" aria-labelledby="refund-heading">
+                <h2 class="h3 mb-0" id="refund-heading">Need to return something?</h2>
+                <p class="checkout-muted">Refund requests are reviewed by a staff member.</p>
+                <a class="btn btn-secondary w-100" href="{% url 'refunds:request' order.order_id %}">Request a refund</a>
+            </section>
+            {% endif %}{% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}
