@@ -21,13 +21,27 @@ services:
       - DEFAULT_STAFF_USERNAME=${DEFAULT_STAFF_USERNAME:-}
       - DEFAULT_STAFF_PASSWORD=${DEFAULT_STAFF_PASSWORD:-}
       - DEFAULT_STAFF_EMAIL=${DEFAULT_STAFF_EMAIL:-}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_CHAT_MODEL=qwen3:4b-instruct
+      - OLLAMA_EMBED_MODEL=all-minilm:l6-v2
     depends_on:
       db:
         condition: service_healthy
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama
+    container_name: aria-ollama
+    ports:
+      - 127.0.0.1:11434:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    gpus: all
 
   db:
     container_name: django-db
-    image: postgres:18
+    image: pgvector/pgvector:pg18-trixie
     environment:
       - POSTGRES_DB=${DB_NAME:-aria}
       - POSTGRES_USER=${DB_USER:-aria}
@@ -42,3 +56,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+volumes:
+  ollama-data:

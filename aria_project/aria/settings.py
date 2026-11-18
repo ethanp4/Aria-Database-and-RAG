@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'core',
     'orders',
     'payments',
-    'products'
+    'products',
+    'chatbot',
 ]
 
 #translate message tag names to bootstrap classes
@@ -109,6 +110,11 @@ DATABASES = {
         'PORT': env('DB_PORT', default='5433'),
     }
 }
+
+OLLAMA_BASE_URL = env('OLLAMA_BASE_URL', default='http://ollama:11434').rstrip('/')
+OLLAMA_CHAT_MODEL = env('OLLAMA_CHAT_MODEL', default='qwen3:4b-instruct')
+OLLAMA_EMBED_MODEL = env('OLLAMA_EMBED_MODEL', default='all-minilm:l6-v2')
+ARIA_RAG_TOP_K = env.int('ARIA_RAG_TOP_K', default=5)
 
 
 # Password validation
