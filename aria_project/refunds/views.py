@@ -35,10 +35,51 @@ def request_view(request, order_id):
     })
 
 
+# Staff screens show one SAMPLE request so the designed states can be reviewed.
+# Everything below is invented placeholder data: no real order, customer or
+# payment is read. Only a masked card display is shown (never a token or PAN).
+SAMPLE_REFUND = {
+    'reference': 'RF-SAMPLE-1',
+    'order_ref': 'AR-SAMPLE-1',
+    'order_date': 'Sample order date',
+    'customer': 'Sample customer',
+    'customer_email': 'customer@example.com',
+    'item_name': 'Sample open-heel fins',
+    'item_detail': 'Sample size · Qty 1',
+    'amount': '189.99',
+    'payment_display': 'Visa •••• 4242',
+    'reason': 'Size not suitable',
+    'reason_text': 'Sample text: the item is unopened and the fit is wrong.',
+    'submitted': 'Sample submission time',
+    'decline_reason': 'Sample text: the item was opened and used, so it is not eligible under the returns policy.',
+    'history': [
+        {'order_ref': 'AR-SAMPLE-2', 'amount': '79.00', 'decision': 'Approved'},
+        {'order_ref': 'AR-SAMPLE-3', 'amount': '99.00', 'decision': 'Declined'},
+    ],
+}
+
+SAMPLE_QUEUE = [
+    {'reference': 'RF-SAMPLE-1', 'order_ref': 'AR-SAMPLE-1', 'customer': 'Sample customer A',
+     'amount': '189.99', 'reason': 'Size not suitable', 'risk': 'Low'},
+    {'reference': 'RF-SAMPLE-2', 'order_ref': 'AR-SAMPLE-4', 'customer': 'Sample customer B',
+     'amount': '89.95', 'reason': 'Arrived damaged', 'risk': 'Medium'},
+    {'reference': 'RF-SAMPLE-3', 'order_ref': 'AR-SAMPLE-5', 'customer': 'Sample customer C',
+     'amount': '249.00', 'reason': 'Duplicate request', 'risk': 'High'},
+]
+
+STAFF_STATE_LABELS = {
+    'review': 'Refund review',
+    'processing': 'Processing refund',
+    'approved': 'Refund approved',
+    'decline-reason': 'Decline reason',
+    'declined': 'Refund declined',
+}
+
+
 @role_required(ROLE_STAFF, ROLE_ADMIN)
 @require_GET
 def staff_queue_view(request):
-    return render(request, 'refunds/staff_queue.html')
+    return render(request, 'refunds/staff_queue.html', {'requests': SAMPLE_QUEUE})
 
 
 @role_required(ROLE_STAFF, ROLE_ADMIN)
@@ -47,4 +88,9 @@ def staff_review_view(request):
     state = request.GET.get('state', 'review')
     if state not in STAFF_STATES:
         state = 'review'
-    return render(request, 'refunds/staff_review.html', {'state': state})
+    return render(request, 'refunds/staff_review.html', {
+        'state': state,
+        'state_label': STAFF_STATE_LABELS[state],
+        'states': STAFF_STATE_LABELS.items(),
+        'refund': SAMPLE_REFUND,
+    })

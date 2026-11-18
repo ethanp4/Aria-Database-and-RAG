@@ -1,3 +1,63 @@
 {% extends "base.html" %}
-{% block title %}refunds/staff_queue{% endblock %}
-{% block content %}<div class="aria-page"><h1>refunds/staff_queue</h1><p>Prototype screen, coming next.</p></div>{% endblock %}
+{% load static %}
+
+{% block title %}Refund requests{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/backoffice.css' %}">{% endblock %}
+
+{% block content %}
+<div class="aria-page">
+    <div class="prototype-notice" role="note">
+        <img src="{% static 'img/icons/info.svg' %}" width="19.25" height="19" alt="">
+        <div>
+            <strong>Preview: refunds aren't live yet; no action is taken.</strong>
+            The requests below are sample data, not real customers or orders.
+        </div>
+    </div>
+
+    <header class="page-heading">
+        <h1>Refund requests</h1>
+        <p>{{ username }} · Awaiting human review</p>
+    </header>
+
+    <p class="bo-strong mb-0" id="refunds-count">Refund requests · {{ requests|length }} sample requests</p>
+    <div class="bo-table-wrap">
+        <table class="bo-table bo-table--stack" aria-describedby="refunds-count">
+            <caption class="visually-hidden">Sample refund requests with order, customer, amount, reason and risk label</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Request</th>
+                    <th scope="col">Order #</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Risk (sample)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in requests %}
+                <tr>
+                    <th scope="row"><a class="order-ref" href="{% url 'refunds:staff_review' %}?state=review">{{ item.reference }}</a></th>
+                    <td data-label="Order">{{ item.order_ref }}</td>
+                    <td data-label="Customer">{{ item.customer }}</td>
+                    <td data-label="Amount">${{ item.amount }} CAD</td>
+                    <td data-label="Reason">{{ item.reason }}</td>
+                    <td>
+                        <div class="bo-status">
+                            {% if item.risk == 'High' %}
+                            <span class="status-badge status-badge--error"><img src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">High risk</span>
+                            {% elif item.risk == 'Medium' %}
+                            <span class="status-badge status-badge--warning"><img src="{% static 'img/icons/loader-circle.svg' %}" width="19" height="19" alt="">Medium risk</span>
+                            {% else %}
+                            <span class="status-badge status-badge--success"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">Low risk</span>
+                            {% endif %}
+                            <a class="text-action" href="{% url 'refunds:staff_review' %}?state=review">Review refund<span class="visually-hidden"> {{ item.reference }}</span></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
