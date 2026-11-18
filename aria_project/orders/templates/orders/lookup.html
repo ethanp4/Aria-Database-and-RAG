@@ -1,25 +1,41 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Find my order{% endblock %}
 
 {% block content %}
-<main class="container py-5" style="max-width: 32rem;">
-    <h1 class="h2 mb-4">Find my order</h1>
-    <p>Enter the order number and email address used at checkout.</p>
-    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
-    <form method="post" novalidate>
+<div class="aria-page aria-page-narrow">
+    <div class="page-heading">
+        <h1>Find my order</h1>
+        <p>Enter the order number and email address used at checkout.</p>
+    </div>
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+    <form method="post" novalidate class="aria-card">
         {% csrf_token %}
-        <div class="mb-3">
-            <label class="form-label" for="{{ form.order_number.id_for_label }}">Order number</label>
-            <input class="form-control" type="number" name="order_number" id="{{ form.order_number.id_for_label }}" value="{{ form.order_number.value|default_if_none:'' }}" required>
-            {% for e in form.order_number.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        <div class="aria-field-group">
+            <div class="aria-field{% if form.order_number.errors %} is-invalid{% endif %}">
+                <div class="aria-field__body">
+                    <label for="{{ form.order_number.id_for_label }}">Order number</label>
+                    <input type="number" name="order_number" id="{{ form.order_number.id_for_label }}" value="{{ form.order_number.value|default_if_none:'' }}" required{% if form.order_number.errors %} aria-invalid="true" aria-describedby="order-number-error"{% endif %}>
+                </div>
+            </div>
+            {% if form.order_number.errors %}<div class="field-error mt-0" id="order-number-error">{% for e in form.order_number.errors %}{{ e }} {% endfor %}</div>{% endif %}
         </div>
-        <div class="mb-3">
-            <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
-            <input class="form-control" type="email" name="email" id="{{ form.email.id_for_label }}" value="{{ form.email.value|default_if_none:'' }}" required>
-            {% for e in form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        <div class="aria-field-group">
+            <div class="aria-field{% if form.email.errors %} is-invalid{% endif %}">
+                <div class="aria-field__body">
+                    <label for="{{ form.email.id_for_label }}">Email</label>
+                    <input type="email" name="email" id="{{ form.email.id_for_label }}" value="{{ form.email.value|default_if_none:'' }}" autocomplete="email" required{% if form.email.errors %} aria-invalid="true" aria-describedby="email-error"{% endif %}>
+                </div>
+            </div>
+            {% if form.email.errors %}<div class="field-error mt-0" id="email-error">{% for e in form.email.errors %}{{ e }} {% endfor %}</div>{% endif %}
         </div>
-        <button class="btn btn-primary" type="submit">Find order</button>
+        <button class="btn btn-primary w-100" type="submit">Find order</button>
     </form>
-</main>
+</div>
 {% endblock %}
