@@ -16,7 +16,7 @@ real versus preview-only, and what is still open. ALL DATA IS SYNTHETIC.
   Bootstrap 5 is still loaded for the grid and utilities, and its components are re-skinned.
 - Screens with a backend (storefront, cart, checkout, orders, staff orders, admin products)
   were restyled **template-only**. View, order, payment and stock logic is unchanged.
-- Screens without a backend yet (refunds, Ask Aria chatbot) are **read-only previews**.
+- Refund screens have no backend yet, so they are **read-only previews**.
   They are GET-only, write nothing, and show a "Preview" notice on every page.
 - Admin analytics uses **real** read-only aggregates from the database. Refund figures
   show "Unavailable" until refunds exist.
@@ -85,7 +85,7 @@ Desktop / mobile node IDs refer to the 06 Prototype page.
 | Product detail / Added to cart | 22:1368, 22:1563 / 22:1255, 22:1454 | `products:detail` | `products/product_details.html` |
 | Cart / Empty cart | 22:1742, 22:1853 / 22:1653, 22:1809 | `cart:detail` | `cart/detail.html` |
 | Address book | (Figma field styles) | `accounts:address_*` | `accounts/address_list.html`, `address_form.html` |
-| Ask Aria (answer, no source, action boundary) **preview** | 22:6612, 22:6750, 22:6871 / 22:6534, 22:6698, 22:6817 | `chat:ask` (`?state=`) | `chat/ask.html` |
+| Ask Aria (answer, no source, action boundary) | 22:6612, 22:6750, 22:6871 / 22:6534, 22:6698, 22:6817 | `chat:ask` | `chat/ask.html` + `static/js/ask-aria.js` (live, see §4) |
 
 ### Checkout and customer orders
 | Figma screen | Nodes (D / M) | URL name | Template |
@@ -116,30 +116,37 @@ Desktop / mobile node IDs refer to the 06 Prototype page.
 
 ## 4. Preview-only screens (no backend yet)
 
-New apps: `refunds/`, `chat/`, `analytics/`. Every route is registered in the role-guard
+New apps: `refunds/`, `chat/` (the Ask Aria page), `analytics/`. Every route is registered in the role-guard
 POLICY table in `accounts/tests/test_url_guards.py`.
 
 | Route | Who | Behaviour |
 |---|---|---|
 | `refunds:request` | customer only (staff/admin 403, another customer's order 404) | Uses the customer's real order lines. Steps move by GET links. Nothing submits. The last step says **"No refund request was created."** |
 | `refunds:staff_queue`, `refunds:staff_review` | staff and admin | Clearly synthetic sample data defined in the view. Risk labels are marked as samples. The buttons only switch between the designed states. |
-| `chat:ask` | everyone | Sample answers. The "no source" state refuses and offers a person; the "action boundary" state explains it can't act. There is no form and no POST handler. It has no access to orders or refunds (CLAUDE.md invariants 5 and 6). |
 | `analytics:dashboard`, `analytics:data` | admin only | Real aggregates from 5 bounded queries (revenue and orders by month and day, orders by status, top products, low stock). Refund metrics show "Unavailable". No payment data is read. |
 
 All preview views are GET-only, and their tests assert that POST returns 405 and nothing is written.
-When refunds and the chatbot are built, replace these views. Don't extend them.
+When refunds are built, replace these views. Don't extend them.
 
-**Ask Aria and the RAG backend:** master now has the real chatbot. It's a `POST /api/chat/stream/`
-endpoint (`chatbot:stream`, server-sent events) that needs a signed-in user, scopes sources by role,
-and refuses when it finds no source.
-- The `chat:ask` page is still the static preview and is **not yet wired** to that endpoint.
-- To wire it, replace the sample conversation with a small script that posts `{"message": ...}`
-  (with the CSRF token) and renders the streamed answer, citations and refusal using the existing
-  `chat/ask.html` styles.
-- Guests see the Ask Aria button, but the endpoint returns 401 for them. Either hide the button for
-  guests or show a sign-in prompt on the page.
-- In the role-guard test the endpoint's category is `API_LOGIN`: anonymous gets 401, and any
-  signed-in role is allowed.
+**Ask Aria (live):** the `chat:ask` page is wired to the RAG chatbot, `POST /api/chat/stream/`
+(`chatbot:stream`).
+- `static/js/ask-aria.js` posts `{"message": ...}` with the CSRF header and renders the server-sent
+  events:
+  - `sources`: shown as cited sources under the answer
+  - `token`: the streamed answer text
+  - `done {refused}`: a refusal, shown with a human-help button (invariant 6)
+  - `error`: a friendly "unavailable" message, also used for 503s and dropped streams
+- Model text is inserted with `textContent`, never as HTML.
+- Signed-in customers, staff and admin get the composer. The endpoint scopes sources by role:
+  staff and admin also search the support guides.
+- Guests get a sign-in prompt, because the endpoint returns 401 to them. The Ask Aria button stays
+  visible so guests can find the prompt.
+- The page view itself is GET-only. In the role-guard test the endpoint's category is `API_LOGIN`:
+  anonymous gets 401, and any signed-in role is allowed.
+- Checked in the browser with no document index loaded: the request passes CSRF and auth, gets a 503,
+  and the page shows the unavailable message with "Contact customer service". A full answer needs
+  Ollama running and `rag/ingest_documents.py` run against a pgvector database; that path is
+  covered by `chatbot/tests/test_stream.py`.
 
 ---
 
@@ -198,7 +205,7 @@ python manage.py runserver
 ```
 
 Preview states to look at:
-- `/ask-aria/?state=answer|no-source|action-boundary`
+- `/ask-aria/` signed in (live chat) and signed out (sign-in prompt)
 - `/orders/<id>/refund/?step=reason|items|confirm|requested` (as the customer who owns the order)
 - `/staff/refunds/review/?state=review|processing|approved|decline-reason|declined` (as staff)
 - `/analytics/` and `/analytics/data/` (as admin)
