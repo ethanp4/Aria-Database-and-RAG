@@ -1,0 +1,28 @@
+{% if low_stock %}
+<div class="bo-datatable-wrap">
+    <table class="bo-datatable">
+        <caption class="visually-hidden">Active products at or below their reorder level, lowest stock first (up to {{ low_stock_limit }})</caption>
+        <thead>
+            <tr>
+                <th scope="col">Product</th>
+                <th scope="col">SKU</th>
+                <th scope="col" class="num">Stock</th>
+                <th scope="col" class="num">Reorder level</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in low_stock %}
+            <tr>
+                <th scope="row"><a href="{% url 'products:product_edit' p.product_id %}">{{ p.name }}</a></th>
+                <td>{{ p.sku }}</td>
+                <td class="num">{% if p.stock_quantity <= 0 %}<span class="status-badge status-badge--error">Out of stock</span>{% else %}{{ p.stock_quantity }}{% endif %}</td>
+                <td class="num">{{ p.reorder_level }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="chart-note">Lowest stock first; shows up to {{ low_stock_limit }} products.</p>
+{% else %}
+<p class="bo-empty">All active products are above their reorder level.</p>
+{% endif %}
