@@ -1,0 +1,97 @@
+SET maintenance_work_mem = '512MB';
+SET
+SET max_parallel_maintenance_workers = 0;
+SET
+DROP TABLE IF EXISTS scale_vectors;
+psql:C5_scale_test.sql:12: NOTICE:  table "scale_vectors" does not exist, skipping
+DROP TABLE
+CREATE UNLOGGED TABLE scale_vectors (id INTEGER PRIMARY KEY, embedding VECTOR(384) NOT NULL);
+CREATE TABLE
+Timing is on.
+INSERT INTO scale_vectors
+SELECT g,
+       l2_normalize(b.embedding + (SELECT array_agg((random() - 0.5) * 0.15)::vector
+                                   FROM generate_series(1, 384) WHERE g > 0))
+FROM generate_series(1, 100000) AS g
+JOIN (SELECT row_number() OVER (ORDER BY review_id) AS n, embedding FROM review_embeddings) b
+  ON b.n = 1 + g % 2390;
+INSERT 0 100000
+Time: 3309.638 ms (00:03.310)
+CREATE INDEX scale_vectors_hnsw ON scale_vectors USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+CREATE INDEX
+Time: 19449.877 ms (00:19.450)
+Timing is off.
+ANALYZE scale_vectors;
+ANALYZE
+SELECT count(*) AS vectors,
+       pg_size_pretty(pg_table_size('scale_vectors'))         AS table_size,
+       pg_size_pretty(pg_relation_size('scale_vectors_hnsw')) AS hnsw_index_size
+FROM scale_vectors;
+ vectors | table_size | hnsw_index_size 
+---------+------------+-----------------
+  100000 | 156 MB     | 195 MB
+(1 row)
+
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT id FROM scale_vectors
+ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Limit (actual time=1.313..1.352 rows=10.00 loops=1)
+   Buffers: shared hit=459 read=88 written=88
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.035..0.036 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'S4'::text)
+           Index Searches: 1
+           Buffers: shared read=2 written=2
+   ->  Index Scan using scale_vectors_hnsw on scale_vectors (actual time=1.312..1.348 rows=10.00 loops=1)
+         Order By: (embedding <=> (InitPlan 1).col1)
+         Index Searches: 1
+         Buffers: shared hit=459 read=88 written=88
+ Planning:
+   Buffers: shared hit=49 read=11 written=11
+ Planning Time: 0.456 ms
+ Execution Time: 1.415 ms
+(15 rows)
+
+SET enable_indexscan = off;
+SET
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT id FROM scale_vectors
+ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Limit (actual time=32.182..35.472 rows=10.00 loops=1)
+   Buffers: shared hit=374 read=19644 written=281
+   InitPlan 1
+     ->  Bitmap Heap Scan on eval_queries (actual time=0.049..0.050 rows=1.00 loops=1)
+           Recheck Cond: ((query_id)::text = 'S4'::text)
+           Heap Blocks: exact=1
+           Buffers: shared hit=2
+           ->  Bitmap Index Scan on eval_queries_pkey (actual time=0.042..0.042 rows=1.00 loops=1)
+                 Index Cond: ((query_id)::text = 'S4'::text)
+                 Index Searches: 1
+                 Buffers: shared hit=1
+   ->  Gather Merge (actual time=32.180..35.466 rows=10.00 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=374 read=19644 written=281
+         ->  Sort (actual time=18.301..18.302 rows=10.00 loops=3)
+               Sort Key: ((scale_vectors.embedding <=> (InitPlan 1).col1))
+               Sort Method: top-N heapsort  Memory: 25kB
+               Buffers: shared hit=372 read=19644 written=281
+               Worker 0:  Sort Method: top-N heapsort  Memory: 25kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 25kB
+               ->  Parallel Seq Scan on scale_vectors (actual time=0.085..14.970 rows=33333.33 loops=3)
+                     Buffers: shared hit=356 read=19644 written=281
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.090 ms
+ Execution Time: 35.508 ms
+(27 rows)
+
+RESET enable_indexscan;
+RESET
+DROP TABLE scale_vectors;
+DROP TABLE

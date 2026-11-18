@@ -1,0 +1,63 @@
+CREATE TABLE review_embeddings (
+    review_id   BIGINT       PRIMARY KEY,
+    model       VARCHAR(100) NOT NULL DEFAULT 'sentence-transformers/all-MiniLM-L6-v2@1110a24',
+    embedding   VECTOR(384)  NOT NULL,
+    CONSTRAINT review_embeddings_review_fk FOREIGN KEY (review_id)
+        REFERENCES product_reviews (review_id) ON DELETE CASCADE
+);
+CREATE TABLE
+CREATE TABLE eval_queries (
+    query_id    VARCHAR(10) PRIMARY KEY,
+    query_text  TEXT        NOT NULL,
+    embedding   VECTOR(384) NOT NULL
+);
+CREATE TABLE
+COPY  review_embeddings ( review_id, embedding ) FROM STDIN WITH (FORMAT csv, HEADER true)
+COPY 2390
+COPY  eval_queries ( query_id, query_text, embedding ) FROM STDIN WITH (FORMAT csv, HEADER true)
+COPY 9
+SELECT (SELECT count(*) FROM product_reviews)                            AS reviews,
+       (SELECT count(*) FROM review_embeddings)                          AS embeddings,
+       (SELECT vector_dims(embedding) FROM review_embeddings LIMIT 1)    AS dims,
+       (SELECT round(min(vector_norm(embedding))::numeric, 4) FROM review_embeddings) AS min_norm,
+       (SELECT round(max(vector_norm(embedding))::numeric, 4) FROM review_embeddings) AS max_norm;
+ reviews | embeddings | dims | min_norm | max_norm 
+---------+------------+------+----------+----------
+    2390 |       2390 |  384 |   1.0000 |   1.0000
+(1 row)
+
+Timing is on.
+CREATE INDEX review_embeddings_hnsw ON review_embeddings
+    USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+CREATE INDEX
+Time: 442.504 ms
+Timing is off.
+VACUUM ANALYZE review_embeddings;
+VACUUM
+CREATE FUNCTION fn_search_reviews(p_query VECTOR(384), p_k INTEGER DEFAULT 5)
+RETURNS TABLE (rank BIGINT, review_id BIGINT, sku VARCHAR, product_kind VARCHAR, rating SMALLINT,
+               distance NUMERIC, review_text TEXT)
+LANGUAGE sql STABLE AS $$
+    SELECT row_number() OVER (ORDER BY top.d), top.review_id, p.sku, p.product_kind, r.rating,
+           round(top.d::numeric, 4), left(r.title || '. ' || r.body, 150)
+    FROM (SELECT e.review_id, e.embedding <=> p_query AS d
+          FROM review_embeddings e
+          ORDER BY e.embedding <=> p_query
+          LIMIT p_k) AS top
+    JOIN product_reviews r ON r.review_id = top.review_id
+    JOIN products p ON p.product_id = r.product_id
+    ORDER BY top.d
+$$;
+CREATE FUNCTION
+SELECT indexrelid::regclass::text AS relation, pg_size_pretty(pg_relation_size(indexrelid)) AS size
+FROM pg_index WHERE indrelid = 'review_embeddings'::regclass
+UNION ALL
+SELECT 'review_embeddings (table + TOAST)', pg_size_pretty(pg_total_relation_size('review_embeddings')
+                                            - pg_indexes_size('review_embeddings'));
+             relation              |  size   
+-----------------------------------+---------
+ review_embeddings_pkey            | 72 kB
+ review_embeddings_hnsw            | 4792 kB
+ review_embeddings (table + TOAST) | 3864 kB
+(3 rows)
+

@@ -13,3 +13,7 @@ pgpass.conf
 # 
 pgdata
 venv
+
+# Phase 3: local venv and model cache
+.venv/
+advanceddb_project/**/model_cache/

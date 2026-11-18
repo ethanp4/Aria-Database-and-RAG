@@ -1,0 +1,78 @@
+-- Aria Phase 3 / 01: the Product class hierarchy, mapped with CLASS TABLE INHERITANCE.
+--
+--                      Product  {abstract}          <- existing Phase 2 table `products`
+--                         |  (disjoint, complete)       shared attributes defined ONCE here
+--      +-----------------+------------------+---------------------+
+--  WearableGear   LifeSupportEquipment   DiveElectronics   SafetyAccessory
+--  wearable_gear  life_support_equipment dive_electronics  safety_accessory
+--
+-- Each subclass table holds ONLY its own attributes. Its primary key is also a foreign key to
+-- products, so a subclass row is the "rest" of one product object.
+--
+-- Changes to Phase 2:
+--   products  + product_kind VARCHAR(20)  discriminator (which subclass this product is)
+--             + specs        JSONB        semi-structured attributes (Part B), filled by 02
+--             + UNIQUE (product_id, product_kind)   target of the subclass composite FKs
+-- Nothing else in Phase 2 changes. order_items, inventory_movements, ... keep pointing at
+-- products(product_id), which is why class-table (not concrete-table) inheritance was chosen.
+--
+-- Disjointness is DECLARATIVE: each subclass row carries a fixed product_kind (CHECK) and its
+-- composite FK (product_id, product_kind) must match the parent's discriminator. A product whose
+-- kind is 'WEARABLE' therefore cannot get a row in dive_electronics, and its kind cannot be
+-- changed while its wearable_gear row exists.
+
+ALTER TABLE products
+    ADD COLUMN product_kind VARCHAR(20),
+    ADD COLUMN specs        JSONB,
+    ADD CONSTRAINT products_kind_valid
+        CHECK (product_kind IN ('WEARABLE', 'LIFE_SUPPORT', 'ELECTRONICS', 'ACCESSORY')),
+    ADD CONSTRAINT products_id_kind_unique UNIQUE (product_id, product_kind);
+
+COMMENT ON COLUMN products.product_kind IS 'Discriminator: which subclass table holds the rest of this product';
+COMMENT ON COLUMN products.specs IS 'Semi-structured attributes that differ per product (Phase 3 Part B)';
+
+-- Masks, snorkels, wetsuits, hoods, gloves, fins, boots: things a diver wears
+CREATE TABLE wearable_gear (
+    product_id      BIGINT       PRIMARY KEY,
+    product_kind    VARCHAR(20)  NOT NULL DEFAULT 'WEARABLE' CHECK (product_kind = 'WEARABLE'),
+    material        VARCHAR(60)  NOT NULL,
+    thickness_mm    NUMERIC(3,1) CHECK (thickness_mm BETWEEN 0.5 AND 10),
+    fit_type        VARCHAR(20)  NOT NULL CHECK (fit_type IN
+                        ('FACE_SEAL', 'MOUTHPIECE', 'FULL_BODY', 'HOOD', 'HAND', 'OPEN_HEEL', 'FULL_FOOT', 'BOOT')),
+    -- business rule: neoprene always has a thickness, other materials never do
+    CONSTRAINT wearable_neoprene_has_thickness CHECK ((material = 'neoprene') = (thickness_mm IS NOT NULL)),
+    CONSTRAINT wearable_is_a_product FOREIGN KEY (product_id, product_kind)
+        REFERENCES products (product_id, product_kind) ON DELETE CASCADE
+);
+
+-- Regulators, gauges, hoses, BCDs: gear a diver breathes from or relies on to stay alive
+CREATE TABLE life_support_equipment (
+    product_id              BIGINT      PRIMARY KEY,
+    product_kind            VARCHAR(20) NOT NULL DEFAULT 'LIFE_SUPPORT' CHECK (product_kind = 'LIFE_SUPPORT'),
+    service_interval_months SMALLINT    NOT NULL CHECK (service_interval_months IN (6, 12, 24)),
+    max_depth_m             SMALLINT    NOT NULL CHECK (max_depth_m BETWEEN 10 AND 200),
+    cold_water_rated        BOOLEAN     NOT NULL,
+    CONSTRAINT life_support_is_a_product FOREIGN KEY (product_id, product_kind)
+        REFERENCES products (product_id, product_kind) ON DELETE CASCADE
+);
+
+-- Dive computers and lights: battery-powered
+CREATE TABLE dive_electronics (
+    product_id      BIGINT      PRIMARY KEY,
+    product_kind    VARCHAR(20) NOT NULL DEFAULT 'ELECTRONICS' CHECK (product_kind = 'ELECTRONICS'),
+    battery_type    VARCHAR(20) NOT NULL CHECK (battery_type IN ('USER_REPLACEABLE', 'RECHARGEABLE_LI_ION')),
+    battery_life_h  SMALLINT    NOT NULL CHECK (battery_life_h > 0),
+    warranty_months SMALLINT    NOT NULL CHECK (warranty_months IN (12, 24, 36)),
+    CONSTRAINT electronics_is_a_product FOREIGN KEY (product_id, product_kind)
+        REFERENCES products (product_id, product_kind) ON DELETE CASCADE
+);
+
+-- SMBs, reels, cutters, whistles, compasses, analog gauges: safety and surface accessories
+CREATE TABLE safety_accessory (
+    product_id          BIGINT      PRIMARY KEY,
+    product_kind        VARCHAR(20) NOT NULL DEFAULT 'ACCESSORY' CHECK (product_kind = 'ACCESSORY'),
+    visibility_rating   SMALLINT    NOT NULL CHECK (visibility_rating BETWEEN 1 AND 5),
+    corrosion_resistant BOOLEAN     NOT NULL,
+    CONSTRAINT accessory_is_a_product FOREIGN KEY (product_id, product_kind)
+        REFERENCES products (product_id, product_kind) ON DELETE CASCADE
+);

@@ -1,0 +1,20 @@
+# Phase 3 Python dependencies (Python 3.10+). Install into a virtual environment:
+#   python -m venv .venv
+#   .venv\Scripts\python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.14.1
+#   .venv\Scripts\python -m pip install -r Embeddings/requirements.txt
+# The first command installs the CPU-only PyTorch build (~200 MB instead of ~2 GB with CUDA).
+#
+# Why each package:
+#   sentence-transformers  runs the open all-MiniLM-L6-v2 embedding model locally (no paid API)
+#   transformers           its tokenizer, used to measure review length in model tokens
+#   torch                  the model's runtime (CPU)
+#   numpy                  averaging the window vectors of long reviews
+#   psycopg[binary]        evaluate.py runs the searches against PostgreSQL
+#   python-docx            builds the Word design plan and technical report
+# generate_dataset.py and clean_reviews.py's text handling use the standard library only.
+torch==2.14.1
+sentence-transformers==6.3.0
+transformers==5.20.2
+numpy==2.2.6
+psycopg[binary]==3.3.9
+python-docx==1.2.0

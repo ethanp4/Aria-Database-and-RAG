@@ -1,0 +1,344 @@
+SELECT sku, product_kind, jsonb_pretty(specs) AS specs
+FROM products WHERE sku IN ('SUIT-002', 'COMP-002', 'REG-001') ORDER BY sku;
+   sku    | product_kind |                           specs                            
+----------+--------------+------------------------------------------------------------
+ COMP-002 | ELECTRONICS  | {                                                         +
+          |              |     "colours": [                                          +
+          |              |         "blue"                                            +
+          |              |     ],                                                    +
+          |              |     "features": {                                         +
+          |              |         "modes": [                                        +
+          |              |             "air",                                        +
+          |              |             "nitrox",                                     +
+          |              |             "gauge",                                      +
+          |              |             "freedive"                                    +
+          |              |         ],                                                +
+          |              |         "nitrox": true,                                   +
+          |              |         "algorithm": "RGBM",                              +
+          |              |         "gas_mixes": 2,                                   +
+          |              |         "max_o2_pct": 40,                                 +
+          |              |         "air_integrated": true                            +
+          |              |     },                                                    +
+          |              |     "weight_g": 156,                                      +
+          |              |     "certifications": [                                   +
+          |              |         "EN13319"                                         +
+          |              |     ],                                                    +
+          |              |     "compatible_with": [                                  +
+          |              |         {                                                 +
+          |              |             "sku": "GEN-REG1-09",                         +
+          |              |             "note": "HP port for the wireless transmitter"+
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "sku": "REG-001",                             +
+          |              |             "note": "HP port for the wireless transmitter"+
+          |              |         }                                                 +
+          |              |     ]                                                     +
+          |              | }
+ REG-001  | LIFE_SUPPORT | {                                                         +
+          |              |     "colours": [                                          +
+          |              |         "black",                                          +
+          |              |         "red",                                            +
+          |              |         "white"                                           +
+          |              |     ],                                                    +
+          |              |     "features": {                                         +
+          |              |         "ports": {                                        +
+          |              |             "hp": 2,                                      +
+          |              |             "lp": 4                                       +
+          |              |         },                                                +
+          |              |         "design": "balanced diaphragm",                   +
+          |              |         "max_o2_pct": 40,                                 +
+          |              |         "nitrox_compatible": true,                        +
+          |              |         "environmentally_sealed": true                    +
+          |              |     },                                                    +
+          |              |     "weight_g": 623,                                      +
+          |              |     "certifications": [                                   +
+          |              |         "CE",                                             +
+          |              |         "EN250"                                           +
+          |              |     ],                                                    +
+          |              |     "compatible_with": [                                  +
+          |              |         {                                                 +
+          |              |             "sku": "GEN-REG2-09",                         +
+          |              |             "note": "second stage on LP port"             +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "sku": "GEN-REG2-10",                         +
+          |              |             "note": "second stage on LP port"             +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "sku": "HOSE-001",                            +
+          |              |             "note": "standard 3/8 in. LP hose"            +
+          |              |         }                                                 +
+          |              |     ]                                                     +
+          |              | }
+ SUIT-002 | WEARABLE     | {                                                         +
+          |              |     "sizes": [                                            +
+          |              |         {                                                 +
+          |              |             "size": "XS",                                 +
+          |              |             "chest_cm": 84,                               +
+          |              |             "available": true,                            +
+          |              |             "height_cm": 160                              +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "size": "S",                                  +
+          |              |             "chest_cm": 90,                               +
+          |              |             "available": true,                            +
+          |              |             "height_cm": 167                              +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "size": "M",                                  +
+          |              |             "chest_cm": 96,                               +
+          |              |             "available": false,                           +
+          |              |             "height_cm": 174                              +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "size": "L",                                  +
+          |              |             "chest_cm": 102,                              +
+          |              |             "available": false,                           +
+          |              |             "height_cm": 180                              +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "size": "XL",                                 +
+          |              |             "chest_cm": 108,                              +
+          |              |             "available": true,                            +
+          |              |             "height_cm": 186                              +
+          |              |         },                                                +
+          |              |         {                                                 +
+          |              |             "size": "XXL",                                +
+          |              |             "chest_cm": 114,                              +
+          |              |             "available": true,                            +
+          |              |             "height_cm": 190                              +
+          |              |         }                                                 +
+          |              |     ],                                                    +
+          |              |     "colours": [                                          +
+          |              |         "orange",                                         +
+          |              |         "red",                                            +
+          |              |         "yellow"                                          +
+          |              |     ],                                                    +
+          |              |     "features": {                                         +
+          |              |         "zip": "back",                                    +
+          |              |         "seals": [                                        +
+          |              |             "neck",                                       +
+          |              |             "wrist"                                       +
+          |              |         ],                                                +
+          |              |         "knee_pads": true                                 +
+          |              |     },                                                    +
+          |              |     "weight_g": 2255                                      +
+          |              | }
+(3 rows)
+
+SELECT key, count(*) AS products_with_key
+FROM products, jsonb_object_keys(specs) AS key
+GROUP BY key ORDER BY products_with_key DESC, key;
+       key       | products_with_key 
+-----------------+-------------------
+ colours         |               200
+ weight_g        |               200
+ features        |               166
+ sizes           |                70
+ certifications  |                58
+ compatible_with |                57
+(6 rows)
+
+SELECT sku, name, unit_price,
+       specs #>> '{features,max_o2_pct}' AS max_o2_pct,
+       specs #>> '{features,gas_mixes}'  AS gas_mixes,
+       specs #>> '{features,algorithm}'  AS algorithm
+FROM products
+WHERE specs @> '{"features": {"nitrox": true}}'
+ORDER BY unit_price
+LIMIT 10;
+     sku     |               name               | unit_price | max_o2_pct | gas_mixes |    algorithm     
+-------------+----------------------------------+------------+------------+-----------+------------------
+ COMP-001    | Wrist dive computer              |     389.00 | 40         | 2         | Buhlmann ZHL-16C
+ GEN-COMP-01 | Recreational Wrist dive computer |     389.00 | 40         | 2         | RGBM
+ GEN-COMP-02 | Travel Wrist dive computer       |     398.73 | 40         | 2         | RGBM
+ GEN-COMP-03 | Professional Wrist dive computer |     408.45 | 40         | 2         | Buhlmann ZHL-16C
+ GEN-COMP-04 | Cold-water Wrist dive computer   |     418.18 | 40         | 2         | Buhlmann ZHL-16C
+ GEN-COMP-05 | Warm-water Wrist dive computer   |     427.90 | 40         | 2         | RGBM
+ GEN-COMP-07 | Expedition Wrist dive computer   |     447.35 | 40         | 2         | RGBM
+ GEN-COMP-08 | Lightweight Wrist dive computer  |     457.08 | 40         | 2         | Buhlmann ZHL-16C
+ GEN-COMP-09 | Technical Wrist dive computer    |     466.80 | 100        | 3         | Buhlmann ZHL-16C
+ GEN-COMP-10 | Deluxe Wrist dive computer       |     476.53 | 40         | 2         | Buhlmann ZHL-16C
+(10 rows)
+
+SELECT count(*) AS nitrox_computers FROM products WHERE specs @> '{"features": {"nitrox": true}}';
+ nitrox_computers 
+------------------
+               20
+(1 row)
+
+EXPLAIN (ANALYZE, BUFFERS, COSTS)
+SELECT sku, name FROM products WHERE specs @> '{"features": {"nitrox": true}}';
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Seq Scan on products  (cost=0.00..32.50 rows=18 width=42) (actual time=0.013..0.070 rows=20.00 loops=1)
+   Filter: (specs @> '{"features": {"nitrox": true}}'::jsonb)
+   Rows Removed by Filter: 180
+   Buffers: shared hit=30
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.075 ms
+ Execution Time: 0.079 ms
+(8 rows)
+
+SELECT pg_size_pretty(pg_relation_size('products'))           AS products_heap,
+       (SELECT relpages FROM pg_class WHERE relname = 'products') AS heap_pages,
+       pg_size_pretty(pg_relation_size('products_specs_gin')) AS gin_index;
+ products_heap | heap_pages | gin_index 
+---------------+------------+-----------
+ 240 kB        |         30 | 48 kB
+(1 row)
+
+SET enable_seqscan = off;
+SET
+EXPLAIN (ANALYZE, BUFFERS, COSTS)
+SELECT sku, name FROM products WHERE specs @> '{"features": {"nitrox": true}}';
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on products  (cost=12.89..40.43 rows=18 width=42) (actual time=0.029..0.037 rows=20.00 loops=1)
+   Recheck Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
+   Heap Blocks: exact=5
+   Buffers: shared hit=9
+   ->  Bitmap Index Scan on products_specs_gin  (cost=0.00..12.89 rows=18 width=0) (actual time=0.021..0.022 rows=21.00 loops=1)
+         Index Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
+         Index Searches: 1
+         Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.081 ms
+ Execution Time: 0.047 ms
+(12 rows)
+
+RESET enable_seqscan;
+RESET
+EXPLAIN (ANALYZE, BUFFERS, COSTS)
+SELECT review_id FROM product_reviews WHERE details @> '{"dive_context": {"site": "Les Escoumins"}}';
+                                                           QUERY PLAN                                                            
+---------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on product_reviews  (cost=8.96..180.15 rows=80 width=8) (actual time=0.029..0.176 rows=82.00 loops=1)
+   Recheck Cond: (details @> '{"dive_context": {"site": "Les Escoumins"}}'::jsonb)
+   Heap Blocks: exact=70
+   Buffers: shared hit=73
+   ->  Bitmap Index Scan on reviews_details_gin  (cost=0.00..8.94 rows=80 width=0) (actual time=0.013..0.014 rows=82.00 loops=1)
+         Index Cond: (details @> '{"dive_context": {"site": "Les Escoumins"}}'::jsonb)
+         Index Searches: 1
+         Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=91
+ Planning Time: 0.239 ms
+ Execution Time: 0.186 ms
+(12 rows)
+
+SELECT p.sku, p.name,
+       jsonb_path_query_array(p.specs, '$.sizes[*] ? (@.available == false).size') AS unavailable_sizes
+FROM products p
+WHERE p.specs @? '$.sizes[*] ? (@.available == false)'
+ORDER BY p.sku
+LIMIT 12;
+     sku     |                      name                      | unavailable_sizes  
+-------------+------------------------------------------------+--------------------
+ BOOT-001    | 5 mm neoprene dive boots                       | ["36-37"]
+ FIN-001     | Open-heel paddle fins                          | ["42-43"]
+ FIN-002     | Split-blade open-heel fins                     | ["38-39"]
+ FIN-003     | Full-foot snorkeling fins                      | ["42-43"]
+ FIN-004     | Compact travel fins                            | ["40-41", "42-43"]
+ GEN-BCD-03  | Professional Back-inflate buoyancy compensator | ["L", "XL"]
+ GEN-BCD-08  | Lightweight Back-inflate buoyancy compensator  | ["XL"]
+ GEN-BCD-09  | Technical Back-inflate buoyancy compensator    | ["S"]
+ GEN-BCD-10  | Deluxe Back-inflate buoyancy compensator       | ["S", "L"]
+ GEN-BOOT-02 | Travel Neoprene dive boots                     | ["42-43", "44-45"]
+ GEN-BOOT-05 | Warm-water Neoprene dive boots                 | ["40-41"]
+ GEN-BOOT-07 | Expedition Neoprene dive boots                 | ["44-45"]
+(12 rows)
+
+SELECT review_id, jsonb_path_query(details, '$.dive_context ? (@.water_temp_c <= 6)') AS cold_dive
+FROM product_reviews
+ORDER BY review_id
+LIMIT 5;
+ review_id |                                   cold_dive                                   
+-----------+-------------------------------------------------------------------------------
+         1 | {"site": "Whytecliff Park", "region": "BC", "depth_m": 35, "water_temp_c": 6}
+        22 | {"site": "Bonne Bay", "region": "NL", "depth_m": 15, "water_temp_c": 6}
+        26 | {"site": "Bonne Bay", "region": "NL", "depth_m": 18, "water_temp_c": 4}
+        39 | {"site": "Bonne Bay", "region": "NL", "depth_m": 25, "water_temp_c": 5}
+        56 | {"site": "Les Escoumins", "region": "QC", "depth_m": 15, "water_temp_c": 4}
+(5 rows)
+
+SELECT p.sku AS product, c.sku AS compatible_sku, c.note,
+       q.name AS compatible_name, q.unit_price, q.stock_quantity, q.product_kind
+FROM products p
+CROSS JOIN LATERAL jsonb_to_recordset(p.specs -> 'compatible_with') AS c(sku TEXT, note TEXT)
+JOIN products q ON q.sku = c.sku
+WHERE p.sku = 'REG-001'
+ORDER BY c.sku;
+ product | compatible_sku |           note           |               compatible_name               | unit_price | stock_quantity | product_kind 
+---------+----------------+--------------------------+---------------------------------------------+------------+----------------+--------------
+ REG-001 | GEN-REG2-09    | second stage on LP port  | Technical Adjustable regulator second stage |     347.94 |             12 | LIFE_SUPPORT
+ REG-001 | GEN-REG2-10    | second stage on LP port  | Deluxe Adjustable regulator second stage    |     355.19 |             13 | LIFE_SUPPORT
+ REG-001 | HOSE-001       | standard 3/8 in. LP hose | Braided regulator hose                      |      64.95 |             27 | LIFE_SUPPORT
+(3 rows)
+
+SELECT cat.name AS category, s.size, count(*) AS products, count(*) FILTER (WHERE NOT s.available) AS unavailable
+FROM products p
+JOIN categories cat ON cat.category_id = p.category_id
+CROSS JOIN LATERAL jsonb_to_recordset(p.specs -> 'sizes') AS s(size TEXT, available BOOLEAN)
+WHERE p.product_kind = 'WEARABLE'
+GROUP BY cat.name, s.size
+ORDER BY cat.name, min(p.product_id), s.size
+LIMIT 12;
+      category       | size  | products | unavailable 
+---------------------+-------+----------+-------------
+ Buoyancy & Exposure | L     |       33 |           5
+ Buoyancy & Exposure | M     |       33 |           5
+ Buoyancy & Exposure | S     |       33 |           2
+ Buoyancy & Exposure | XL    |       33 |           6
+ Buoyancy & Exposure | XS    |       12 |           0
+ Buoyancy & Exposure | XXL   |       12 |           1
+ Fins & Boots        | 36-37 |       25 |           4
+ Fins & Boots        | 38-39 |       25 |           5
+ Fins & Boots        | 40-41 |       25 |           3
+ Fins & Boots        | 42-43 |       25 |           4
+ Fins & Boots        | 44-45 |       25 |           2
+(11 rows)
+
+BEGIN;
+BEGIN
+SELECT sku, specs -> 'sizes' -> 2 AS size_m_before FROM products WHERE sku = 'SUIT-002';
+   sku    |                            size_m_before                            
+----------+---------------------------------------------------------------------
+ SUIT-002 | {"size": "M", "chest_cm": 96, "available": false, "height_cm": 174}
+(1 row)
+
+UPDATE products
+SET specs = jsonb_set(specs,
+                      ARRAY['sizes', (SELECT (i - 1)::text
+                                      FROM jsonb_array_elements(specs -> 'sizes') WITH ORDINALITY AS a(e, i)
+                                      WHERE e ->> 'size' = 'M'), 'available'],
+                      'false'),
+    updated_at = now()
+WHERE sku = 'SUIT-002';
+UPDATE 1
+UPDATE products
+SET specs = jsonb_set(specs, '{features,max_o2_pct}', '50')
+WHERE sku = 'COMP-001';
+UPDATE 1
+SELECT sku, specs -> 'sizes' -> 2 AS size_m_after FROM products WHERE sku = 'SUIT-002';
+   sku    |                            size_m_after                             
+----------+---------------------------------------------------------------------
+ SUIT-002 | {"size": "M", "chest_cm": 96, "available": false, "height_cm": 174}
+(1 row)
+
+SELECT sku, specs -> 'features' AS features_after FROM products WHERE sku = 'COMP-001';
+   sku    |                                                                  features_after                                                                   
+----------+---------------------------------------------------------------------------------------------------------------------------------------------------
+ COMP-001 | {"modes": ["air", "nitrox", "gauge"], "nitrox": true, "algorithm": "Buhlmann ZHL-16C", "gas_mixes": 2, "max_o2_pct": 50, "air_integrated": false}
+(1 row)
+
+ROLLBACK;
+ROLLBACK
+UPDATE products SET specs = specs - 'weight_g' WHERE sku = 'MASK-001';
+psql:B1_jsonb_queries.sql:117: ERROR:  new row for relation "products" violates check constraint "products_specs_valid"
+DETAIL:  Failing row contains (1, MASK-001, Low-volume dive mask, Low-volume tempered-glass mask with a soft silicone skirt., 1, 74.95, CAD, 14, 5, t, 2025-09-01 00:00:00+00, 2026-07-11 14:51:27+00, WEARABLE, {"colours": ["black", "orange"], "features": {"lens": "dual", "s...).
+UPDATE products SET specs = jsonb_set(specs, '{sizes,0}', '{"size": "XS"}') WHERE sku = 'SUIT-002';
+psql:B1_jsonb_queries.sql:120: ERROR:  new row for relation "products" violates check constraint "products_specs_valid"
+DETAIL:  Failing row contains (14, SUIT-002, 5 mm hooded wetsuit, Thermal full suit with an integrated hood for cooler water., 3, 459.00, CAD, 23, 3, t, 2025-09-01 00:00:00+00, 2026-07-16 16:02:04+00, WEARABLE, {"sizes": [{"size": "XS"}, {"size": "S", "chest_cm": 90, "availa...).
