@@ -1,0 +1,13 @@
+{# one checkout form field as an Aria text field (label inside the box). show_errors=False hides errors. #}
+{% with has_errors=field.errors %}
+<div class="aria-field-group">
+    <div class="aria-field{% if has_errors and show_errors != False %} is-invalid{% endif %}">
+        <div class="aria-field__body">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+        </div>
+    </div>
+    {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+    {% if show_errors != False %}{% for e in field.errors %}<p class="field-error mt-0 mb-0">{{ e }}</p>{% endfor %}{% endif %}
+</div>
+{% endwith %}
