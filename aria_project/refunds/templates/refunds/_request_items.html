@@ -1,0 +1,13 @@
+{# the order's real lines; products have no photo field, so a neutral placeholder tile #}
+<ul class="checkout-lines">
+    {% for item in items %}
+    <li class="checkout-line">
+        <div class="checkout-line__thumb" aria-hidden="true">No photo</div>
+        <div class="checkout-line__text">
+            <p class="checkout-line__name fw-semibold">{{ item.product.name }}</p>
+            <p class="checkout-line__meta">Qty {{ item.quantity }} · ${{ item.unit_price }} each</p>
+            <p class="fw-semibold">${{ item.line_total }} CAD</p>
+        </div>
+    </li>
+    {% endfor %}
+</ul>

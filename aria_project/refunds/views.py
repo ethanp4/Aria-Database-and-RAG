@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET
 from accounts.models import ROLE_ADMIN, ROLE_CUSTOMER, ROLE_STAFF
 from accounts.permissions import current_account, role_required
 from orders.models import Order
+from payments.masking import mask_payment
 
 CUSTOMER_STEPS = ('reason', 'items', 'confirm', 'requested')
 STAFF_STATES = ('review', 'processing', 'approved', 'decline-reason', 'declined')
@@ -20,11 +21,18 @@ STAFF_STATES = ('review', 'processing', 'approved', 'decline-reason', 'declined'
 @require_GET
 def request_view(request, order_id):
     # own orders only; another customer's order is a 404
-    order = get_object_or_404(Order, pk=order_id, account=current_account(request))
+    order = get_object_or_404(Order.objects.select_related('confirmed_payment'),
+                              pk=order_id, account=current_account(request))
     step = request.GET.get('step', 'reason')
     if step not in CUSTOMER_STEPS:
         step = 'reason'
-    return render(request, 'refunds/request.html', {'order': order, 'step': step, 'steps': CUSTOMER_STEPS})
+    payment = order.confirmed_payment
+    return render(request, 'refunds/request.html', {
+        'order': order, 'step': step, 'steps': CUSTOMER_STEPS,
+        'items': list(order.items.select_related('product')),
+        # masked display only (brand + last 4); never the token
+        'payment_display': mask_payment(payment) if payment else '',
+    })
 
 
 @role_required(ROLE_STAFF, ROLE_ADMIN)
