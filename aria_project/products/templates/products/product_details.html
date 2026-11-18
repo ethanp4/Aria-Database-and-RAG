@@ -1,47 +1,88 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ product.name }}{% endblock %}
 
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/storefront.css' %}">{% endblock %}
+
 {% block content %}
-<main class="container py-5">
-    <nav aria-label="Breadcrumb" class="mb-3">
-        <a class="text-decoration-none" href="{% url 'products:browse' %}">&larr; Back to products</a>
+{% url 'chat:ask' as ask_url %}
+<div class="aria-page">
+    <nav class="sf-breadcrumb page-heading" aria-label="Breadcrumb">
+        <ol>
+            <li><a href="{% url 'products:browse' %}">Browse</a></li>
+            {% if product.category %}<li><a href="{% url 'products:browse' %}?category={{ product.category.pk }}">{{ product.category.name }}</a></li>{% endif %}
+            <li><span aria-current="page">{{ product.name }}</span></li>
+        </ol>
     </nav>
 
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-    {% endfor %}
-
-    <article class="card border-0 shadow-sm">
-        <div class="card-body">
-            {% if product.category %}
-            <p class="small text-body-secondary mb-2">{{ product.category.name }}</p>
-            {% endif %}
-            <h1 class="h2">{{ product.name }}</h1>
-            {% if product.description %}
-            <p class="text-body-secondary">{{ product.description }}</p>
-            {% endif %}
-            <p class="fs-4 fw-semibold mb-2">{{ product.currency }} {{ product.unit_price }}</p>
-
-            {% if product.stock_quantity > 0 %}
-            <p class="small text-success">In stock</p>
-            {% else %}
-            <p class="small text-body-secondary">Out of stock</p>
-            {% endif %}
-
-            {% if can_shop and product.stock_quantity > 0 %}
-            <form method="post" action="{% url 'cart:add' product.product_id %}" class="row g-2 align-items-end">
-                {% csrf_token %}
-                <div class="col-auto">
-                    <label class="form-label" for="{{ add_form.quantity.id_for_label }}">Quantity</label>
-                    {{ add_form.quantity }}
-                </div>
-                <div class="col-auto">
-                    <button class="btn btn-primary" type="submit">Add to cart</button>
-                </div>
-            </form>
-            {% endif %}
+    <div class="sf-detail">
+        <div class="product-card__photo product-card__photo--placeholder sf-detail__photo" aria-hidden="true">
+            <span class="sf-photo-label">{{ product.category.name|default:'Aria gear' }}</span>
         </div>
-    </article>
-</main>
+
+        <div class="sf-stack">
+            <article class="aria-card" aria-labelledby="product-title">
+                {% if product.stock_quantity <= 0 %}
+                <span class="status-badge status-badge--neutral align-self-start"><img src="{% static 'img/icons/info.svg' %}" width="19" height="19" alt="">Out of stock</span>
+                {% elif product.stock_quantity <= product.reorder_level %}
+                <span class="status-badge status-badge--warning align-self-start"><img src="{% static 'img/icons/info-warning.svg' %}" width="19" height="19" alt="">Only {{ product.stock_quantity }} left</span>
+                {% else %}
+                <span class="status-badge status-badge--success align-self-start"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">In stock</span>
+                {% endif %}
+
+                <h1 id="product-title" class="sf-detail__title">{{ product.name }}</h1>
+                <p class="sf-detail__price">${{ product.unit_price }} {{ product.currency }}</p>
+                {% if product.description %}<p class="sf-muted">{{ product.description }}</p>{% endif %}
+                {% if product.category %}<p class="sf-muted">Category: {{ product.category.name }} · SKU {{ product.sku }}</p>{% endif %}
+
+                {% if can_shop and product.stock_quantity > 0 %}
+                <form method="post" action="{% url 'cart:add' product.product_id %}" class="sf-stack-sm">
+                    {% csrf_token %}
+                    <label class="sf-qty-label" for="{{ add_form.quantity.id_for_label }}">Quantity</label>
+                    <div class="sf-stepper" data-stepper>
+                        <button type="button" data-step="-1" aria-label="Decrease quantity" hidden>&minus;</button>
+                        {{ add_form.quantity }}
+                        <button type="button" data-step="1" aria-label="Increase quantity" hidden>+</button>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">
+                        <span class="sf-icon20"><img src="{% static 'img/icons/shopping-bag-inverse.svg' %}" width="22" height="22" alt=""></span>
+                        Add to cart
+                    </button>
+                </form>
+                {% if cart_count %}
+                <a class="btn btn-secondary w-100" href="{% url 'cart:detail' %}">View cart · {{ cart_count }} item{{ cart_count|pluralize }}</a>
+                {% endif %}
+                {% elif can_shop %}
+                <button class="btn btn-primary w-100" type="button" disabled>Out of stock</button>
+                {% endif %}
+                <p>Ships across Canada and the US</p>
+            </article>
+
+            <section class="aria-card" aria-labelledby="product-help-heading">
+                <h2 id="product-help-heading" class="h3">Questions before you buy?</h2>
+                <p class="sf-muted">Ask about returns, shipping or warranty. Aria explains our policies; a person reviews every refund request.</p>
+                {% if ask_url %}<a class="text-action" href="{{ ask_url }}">Ask Aria about returns</a>{% endif %}
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // −/+ buttons for the quantity field; without JS the number input works alone.
+  document.querySelectorAll('[data-stepper]').forEach(function (stepper) {
+    var input = stepper.querySelector('input');
+    if (!input) { return; }
+    var min = parseInt(input.min || '1', 10), max = parseInt(input.max || '99', 10);
+    stepper.querySelectorAll('[data-step]').forEach(function (btn) {
+      btn.hidden = false;
+      btn.addEventListener('click', function () {
+        var value = parseInt(input.value || String(min), 10) + parseInt(btn.getAttribute('data-step'), 10);
+        input.value = Math.min(max, Math.max(min, isNaN(value) ? min : value));
+      });
+    });
+  });
+</script>
 {% endblock %}

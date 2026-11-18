@@ -1,0 +1,18 @@
+{% load static %}
+{# storefront hero (Figma Aria / Featurepanel), shared by core:home and products:browse #}
+<section class="feature-panel sf-hero" aria-labelledby="hero-heading">
+    <div class="sf-hero__copy">
+        <p class="eyebrow">Gear for the Pacific and beyond</p>
+        <div>
+            <h2 id="hero-heading">Make every descent count.</h2>
+            <p class="lede">Reliable dive essentials, thoughtfully selected. Ships across Canada and the US.</p>
+        </div>
+        {% if hero_cta %}
+        <div class="sf-hero__actions">
+            <a class="btn btn-primary" href="{% url 'products:browse' %}">Shop all gear</a>
+            {% if not username %}<a class="btn btn-secondary" href="{% url 'accounts:login' %}">Sign in</a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <img src="{% static 'img/photos/hero-coast.png' %}" alt="">
+</section>
