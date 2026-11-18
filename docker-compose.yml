@@ -37,7 +37,14 @@ services:
       - 127.0.0.1:11434:11434
     volumes:
       - ollama-data:/root/.ollama
-    gpus: all
+    # NVIDIA GPU passthrough (long form works on compose < 2.30, which lacks `gpus:`)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   db:
     container_name: django-db
