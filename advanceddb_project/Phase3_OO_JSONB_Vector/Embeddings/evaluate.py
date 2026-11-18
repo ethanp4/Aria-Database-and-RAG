@@ -15,7 +15,8 @@ How relevance is decided (written down before looking at results)
     H1 is an exact-term search: relevant when the review text names the place.
     We also report a looser "topic only" score (right topic, either polarity, any product type)
     because it shows what the embedding model gets right and where it fails (sentiment).
-    The marks were then spot-checked by reading every result (see the Notes column).
+    The marks were then spot-checked by reading the review text (all results of S4, S5 and F1);
+    the Why column shows the label behind every mark so anyone can re-check them.
 
 Connection: standard libpq environment variables (PGHOST, PGPORT, PGUSER, PGPASSWORD or a
 pgpass file, PGDATABASE defaults to aria_phase2). Nothing is hard-coded.
@@ -170,8 +171,8 @@ def main():
              '`hnsw.ef_search` = 40, `hnsw.iterative_scan` = relaxed_order).', '',
              '**Relevant** means: right topic, the sentiment the user asked about, and the product type '
              'they asked about. **Topic only** counts any result on the right topic. The labels come from '
-             '`eval/ground_truth.csv`, which is never loaded into the database; every mark was also '
-             'checked by reading the review.', '',
+             '`eval/ground_truth.csv`, which is never loaded into the database. Marks were spot-checked by '
+             'reading the reviews (all of S4, S5 and F1); the Why column shows the label behind each mark.', '',
              '| Search | Question | Method | precision@5 | topic only |', '|---|---|---|---:|---:|']
     for qid, text, label, hits, topical, n in summary:
         lines.append(f'| {qid} | {text} | {label} | {hits}/5 = {hits / K:.2f} | {topical}/5 |')

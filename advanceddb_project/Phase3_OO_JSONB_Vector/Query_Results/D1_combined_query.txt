@@ -67,46 +67,46 @@ ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'D
 LIMIT 5;
                                                                         QUERY PLAN                                                                         
 -----------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit (actual time=0.475..0.478 rows=5.00 loops=1)
-   Buffers: shared hit=772
+ Limit (actual time=0.556..0.559 rows=5.00 loops=1)
+   Buffers: shared hit=771
    InitPlan 1
-     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.005..0.006 rows=1.00 loops=1)
+     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.006..0.007 rows=1.00 loops=1)
            Index Cond: ((query_id)::text = 'D1'::text)
            Index Searches: 1
            Buffers: shared hit=2
-   ->  Sort (actual time=0.475..0.476 rows=5.00 loops=1)
+   ->  Sort (actual time=0.556..0.558 rows=5.00 loops=1)
          Sort Key: ((e.embedding <=> (InitPlan 1).col1))
          Sort Method: top-N heapsort  Memory: 25kB
-         Buffers: shared hit=772
-         ->  Nested Loop (actual time=0.058..0.457 rows=182.00 loops=1)
-               Buffers: shared hit=772
-               ->  Nested Loop (actual time=0.047..0.171 rows=182.00 loops=1)
-                     Buffers: shared hit=224
-                     ->  Hash Join (actual time=0.042..0.050 rows=18.00 loops=1)
+         Buffers: shared hit=771
+         ->  Nested Loop (actual time=0.081..0.533 rows=182.00 loops=1)
+               Buffers: shared hit=771
+               ->  Nested Loop (actual time=0.064..0.218 rows=182.00 loops=1)
+                     Buffers: shared hit=223
+                     ->  Hash Join (actual time=0.057..0.066 rows=18.00 loops=1)
                            Hash Cond: (de.product_id = p.product_id)
-                           Buffers: shared hit=11
-                           ->  Seq Scan on dive_electronics de (actual time=0.004..0.007 rows=22.00 loops=1)
+                           Buffers: shared hit=10
+                           ->  Seq Scan on dive_electronics de (actual time=0.006..0.010 rows=22.00 loops=1)
                                  Filter: (warranty_months >= 24)
                                  Rows Removed by Filter: 12
                                  Buffers: shared hit=1
-                           ->  Hash (actual time=0.031..0.032 rows=20.00 loops=1)
+                           ->  Hash (actual time=0.042..0.043 rows=20.00 loops=1)
                                  Buckets: 1024  Batches: 1  Memory Usage: 9kB
-                                 Buffers: shared hit=10
-                                 ->  Bitmap Heap Scan on products p (actual time=0.019..0.029 rows=20.00 loops=1)
+                                 Buffers: shared hit=9
+                                 ->  Bitmap Heap Scan on products p (actual time=0.026..0.039 rows=20.00 loops=1)
                                        Recheck Cond: (((product_kind)::text = 'ELECTRONICS'::text) AND (specs @> '{"features": {"nitrox": true}}'::jsonb))
-                                       Heap Blocks: exact=5
-                                       Buffers: shared hit=10
-                                       ->  BitmapAnd (actual time=0.015..0.015 rows=0.00 loops=1)
+                                       Heap Blocks: exact=4
+                                       Buffers: shared hit=9
+                                       ->  BitmapAnd (actual time=0.019..0.020 rows=0.00 loops=1)
                                              Buffers: shared hit=5
                                              ->  Bitmap Index Scan on products_kind_idx (actual time=0.007..0.007 rows=35.00 loops=1)
                                                    Index Cond: ((product_kind)::text = 'ELECTRONICS'::text)
                                                    Index Searches: 1
                                                    Buffers: shared hit=1
-                                             ->  Bitmap Index Scan on products_specs_gin (actual time=0.007..0.007 rows=22.00 loops=1)
+                                             ->  Bitmap Index Scan on products_specs_gin (actual time=0.011..0.011 rows=22.00 loops=1)
                                                    Index Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
                                                    Index Searches: 1
                                                    Buffers: shared hit=4
-                     ->  Index Scan using reviews_product_idx on product_reviews r (actual time=0.001..0.006 rows=10.11 loops=18)
+                     ->  Index Scan using reviews_product_idx on product_reviews r (actual time=0.002..0.007 rows=10.11 loops=18)
                            Index Cond: (product_id = de.product_id)
                            Index Searches: 18
                            Buffers: shared hit=213
@@ -116,8 +116,8 @@ LIMIT 5;
                      Buffers: shared hit=546
  Planning:
    Buffers: shared hit=28
- Planning Time: 0.532 ms
- Execution Time: 0.511 ms
+ Planning Time: 0.639 ms
+ Execution Time: 0.615 ms
 (51 rows)
 
 RESET hnsw.iterative_scan;

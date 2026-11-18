@@ -171,14 +171,14 @@ EXPLAIN (ANALYZE, BUFFERS, COSTS)
 SELECT sku, name FROM products WHERE specs @> '{"features": {"nitrox": true}}';
                                                QUERY PLAN                                                
 ---------------------------------------------------------------------------------------------------------
- Seq Scan on products  (cost=0.00..32.50 rows=18 width=42) (actual time=0.014..0.069 rows=20.00 loops=1)
+ Seq Scan on products  (cost=0.00..32.50 rows=18 width=42) (actual time=0.013..0.070 rows=20.00 loops=1)
    Filter: (specs @> '{"features": {"nitrox": true}}'::jsonb)
    Rows Removed by Filter: 180
    Buffers: shared hit=30
  Planning:
    Buffers: shared hit=1
- Planning Time: 0.085 ms
- Execution Time: 0.078 ms
+ Planning Time: 0.075 ms
+ Execution Time: 0.079 ms
 (8 rows)
 
 SELECT pg_size_pretty(pg_relation_size('products'))           AS products_heap,
@@ -195,18 +195,18 @@ EXPLAIN (ANALYZE, BUFFERS, COSTS)
 SELECT sku, name FROM products WHERE specs @> '{"features": {"nitrox": true}}';
                                                            QUERY PLAN                                                            
 ---------------------------------------------------------------------------------------------------------------------------------
- Bitmap Heap Scan on products  (cost=12.89..40.43 rows=18 width=42) (actual time=0.023..0.033 rows=20.00 loops=1)
+ Bitmap Heap Scan on products  (cost=12.89..40.43 rows=18 width=42) (actual time=0.029..0.037 rows=20.00 loops=1)
    Recheck Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
-   Heap Blocks: exact=6
-   Buffers: shared hit=10
-   ->  Bitmap Index Scan on products_specs_gin  (cost=0.00..12.89 rows=18 width=0) (actual time=0.016..0.016 rows=21.00 loops=1)
+   Heap Blocks: exact=5
+   Buffers: shared hit=9
+   ->  Bitmap Index Scan on products_specs_gin  (cost=0.00..12.89 rows=18 width=0) (actual time=0.021..0.022 rows=21.00 loops=1)
          Index Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
          Index Searches: 1
          Buffers: shared hit=4
  Planning:
    Buffers: shared hit=1
- Planning Time: 0.075 ms
- Execution Time: 0.041 ms
+ Planning Time: 0.081 ms
+ Execution Time: 0.047 ms
 (12 rows)
 
 RESET enable_seqscan;
@@ -215,18 +215,18 @@ EXPLAIN (ANALYZE, BUFFERS, COSTS)
 SELECT review_id FROM product_reviews WHERE details @> '{"dive_context": {"site": "Les Escoumins"}}';
                                                            QUERY PLAN                                                            
 ---------------------------------------------------------------------------------------------------------------------------------
- Bitmap Heap Scan on product_reviews  (cost=8.96..180.15 rows=80 width=8) (actual time=0.032..0.189 rows=82.00 loops=1)
+ Bitmap Heap Scan on product_reviews  (cost=8.96..180.15 rows=80 width=8) (actual time=0.029..0.176 rows=82.00 loops=1)
    Recheck Cond: (details @> '{"dive_context": {"site": "Les Escoumins"}}'::jsonb)
    Heap Blocks: exact=70
    Buffers: shared hit=73
-   ->  Bitmap Index Scan on reviews_details_gin  (cost=0.00..8.94 rows=80 width=0) (actual time=0.015..0.016 rows=82.00 loops=1)
+   ->  Bitmap Index Scan on reviews_details_gin  (cost=0.00..8.94 rows=80 width=0) (actual time=0.013..0.014 rows=82.00 loops=1)
          Index Cond: (details @> '{"dive_context": {"site": "Les Escoumins"}}'::jsonb)
          Index Searches: 1
          Buffers: shared hit=3
  Planning:
-   Buffers: shared hit=92
- Planning Time: 0.220 ms
- Execution Time: 0.198 ms
+   Buffers: shared hit=91
+ Planning Time: 0.239 ms
+ Execution Time: 0.186 ms
 (12 rows)
 
 SELECT p.sku, p.name,

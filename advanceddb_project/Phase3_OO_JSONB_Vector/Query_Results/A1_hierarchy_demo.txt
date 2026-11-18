@@ -84,8 +84,8 @@ SELECT fn_add_product(
     'ELECTRONICS', 'GEN-COMP-99', 'Demo wrist dive computer', 5, 429.00,
     '{"weight_g": 118, "colours": ["black"], "features": {"nitrox": true, "max_o2_pct": 40, "gas_mixes": 2}}',
     '{"battery_type": "RECHARGEABLE_LI_ION", "battery_life_h": 45, "warranty_months": 24}') AS new_product_id
-SELECT fn_describe_product(209) AS describe,
-       fn_care_due_date(209, DATE '2026-11-18') AS care_due;
+SELECT fn_describe_product(201) AS describe,
+       fn_care_due_date(201, DATE '2026-11-18') AS care_due;
                                            describe                                           |  care_due  
 ----------------------------------------------------------------------------------------------+------------
  Demo wrist dive computer [ELECTRONICS]: rechargeable li ion battery, 45 h, 24-month warranty | 2028-11-18
@@ -108,7 +108,7 @@ INSERT INTO products (sku, name, category_id, unit_price, product_kind, specs)
 VALUES ('GEN-ORPHAN-01', 'Product with no subclass row', 5, 10.00, 'ELECTRONICS', '{"weight_g": 50}');
 INSERT 0 1
 COMMIT;
-psql:A1_hierarchy_demo.sql:96: ERROR:  Product 210 is a ELECTRONICS but has no row in its subclass table
+psql:A1_hierarchy_demo.sql:96: ERROR:  Product 202 is a ELECTRONICS but has no row in its subclass table
 HINT:  Create products through fn_add_product(), which writes both rows.
 CONTEXT:  PL/pgSQL function fn_check_product_subclass() line 18 at RAISE
 INSERT INTO product_reviews (product_id, account_id, order_id, rating, title, body)

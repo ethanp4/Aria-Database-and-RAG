@@ -30,7 +30,7 @@ Timing is on.
 CREATE INDEX review_embeddings_hnsw ON review_embeddings
     USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 CREATE INDEX
-Time: 385.907 ms
+Time: 442.504 ms
 Timing is off.
 VACUUM ANALYZE review_embeddings;
 VACUUM

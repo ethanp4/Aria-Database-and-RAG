@@ -2,21 +2,21 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT review_id FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
                                                                          QUERY PLAN                                                                          
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=465.96..482.27 rows=10 width=16) (actual time=0.573..0.605 rows=10.00 loops=1)
-   Buffers: shared hit=385
+ Limit  (cost=465.96..482.27 rows=10 width=16) (actual time=0.537..0.567 rows=10.00 loops=1)
+   Buffers: shared hit=383
    InitPlan 1
-     ->  Index Scan using eval_queries_pkey on eval_queries  (cost=0.15..8.17 rows=1 width=32) (actual time=0.015..0.015 rows=1.00 loops=1)
+     ->  Index Scan using eval_queries_pkey on eval_queries  (cost=0.15..8.17 rows=1 width=32) (actual time=0.012..0.012 rows=1.00 loops=1)
            Index Cond: ((query_id)::text = 'S4'::text)
            Index Searches: 1
            Buffers: shared hit=2
-   ->  Index Scan using review_embeddings_hnsw on review_embeddings  (cost=457.79..4355.80 rows=2390 width=16) (actual time=0.567..0.597 rows=10.00 loops=1)
+   ->  Index Scan using review_embeddings_hnsw on review_embeddings  (cost=457.79..4355.80 rows=2390 width=16) (actual time=0.536..0.565 rows=10.00 loops=1)
          Order By: (embedding <=> (InitPlan 1).col1)
          Index Searches: 1
-         Buffers: shared hit=385
+         Buffers: shared hit=383
  Planning:
    Buffers: shared hit=139
- Planning Time: 0.823 ms
- Execution Time: 0.650 ms
+ Planning Time: 0.737 ms
+ Execution Time: 0.609 ms
 (15 rows)
 
 CREATE TEMP TABLE top10_hnsw AS
@@ -29,10 +29,10 @@ EXPLAIN (ANALYZE, BUFFERS)
 SELECT review_id FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
                                                              QUERY PLAN                                                              
 -------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=567.69..567.72 rows=10 width=16) (actual time=1.181..1.184 rows=10.00 loops=1)
+ Limit  (cost=567.69..567.72 rows=10 width=16) (actual time=1.184..1.186 rows=10.00 loops=1)
    Buffers: shared hit=480
    InitPlan 1
-     ->  Bitmap Heap Scan on eval_queries  (cost=4.16..8.17 rows=1 width=32) (actual time=0.009..0.010 rows=1.00 loops=1)
+     ->  Bitmap Heap Scan on eval_queries  (cost=4.16..8.17 rows=1 width=32) (actual time=0.008..0.008 rows=1.00 loops=1)
            Recheck Cond: ((query_id)::text = 'S4'::text)
            Heap Blocks: exact=1
            Buffers: shared hit=2
@@ -40,16 +40,16 @@ SELECT review_id FROM review_embeddings ORDER BY embedding <=> (SELECT embedding
                  Index Cond: ((query_id)::text = 'S4'::text)
                  Index Searches: 1
                  Buffers: shared hit=1
-   ->  Sort  (cost=559.52..565.50 rows=2390 width=16) (actual time=1.180..1.181 rows=10.00 loops=1)
+   ->  Sort  (cost=559.52..565.50 rows=2390 width=16) (actual time=1.183..1.183 rows=10.00 loops=1)
          Sort Key: ((review_embeddings.embedding <=> (InitPlan 1).col1))
          Sort Method: top-N heapsort  Memory: 25kB
          Buffers: shared hit=480
-         ->  Seq Scan on review_embeddings  (cost=0.00..507.88 rows=2390 width=16) (actual time=0.017..1.006 rows=2390.00 loops=1)
+         ->  Seq Scan on review_embeddings  (cost=0.00..507.88 rows=2390 width=16) (actual time=0.015..1.008 rows=2390.00 loops=1)
                Buffers: shared hit=480
  Planning:
    Buffers: shared hit=1
- Planning Time: 0.077 ms
- Execution Time: 1.204 ms
+ Planning Time: 0.071 ms
+ Execution Time: 1.205 ms
 (21 rows)
 
 CREATE TEMP TABLE top10_exact AS
@@ -118,7 +118,7 @@ SELECT ef_search, string_agg(query_id || '=' || overlap, '  ' ORDER BY query_id)
 FROM recall GROUP BY ef_search ORDER BY ef_search;
  ef_search |                       overlap_per_query                       | mean_recall_at_10 
 -----------+---------------------------------------------------------------+-------------------
-        10 | D1=10  F1=10  H1=6  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10  |             0.956
+        10 | D1=9  F1=10  H1=6  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10   |             0.944
         40 | D1=10  F1=10  H1=9  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10  |             0.989
        100 | D1=10  F1=10  H1=10  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10 |             1.000
 (3 rows)
@@ -141,5 +141,5 @@ ORDER BY pg_relation_size(c.oid) DESC;
 Timing is on.
 REINDEX INDEX review_embeddings_hnsw;
 REINDEX
-Time: 395.765 ms
+Time: 436.025 ms
 Timing is off.

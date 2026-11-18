@@ -16,21 +16,21 @@ ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S1'
 LIMIT 5;
                                                    QUERY PLAN                                                    
 -----------------------------------------------------------------------------------------------------------------
- Limit (actual time=0.472..0.487 rows=5.00 loops=1)
-   Buffers: shared hit=311
+ Limit (actual time=0.482..0.498 rows=5.00 loops=1)
+   Buffers: shared hit=294
    InitPlan 1
-     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.007..0.008 rows=1.00 loops=1)
+     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.008..0.008 rows=1.00 loops=1)
            Index Cond: ((query_id)::text = 'S1'::text)
            Index Searches: 1
            Buffers: shared hit=2
-   ->  Index Scan using review_embeddings_hnsw on review_embeddings (actual time=0.470..0.484 rows=5.00 loops=1)
+   ->  Index Scan using review_embeddings_hnsw on review_embeddings (actual time=0.481..0.496 rows=5.00 loops=1)
          Order By: (embedding <=> (InitPlan 1).col1)
          Index Searches: 1
-         Buffers: shared hit=311
+         Buffers: shared hit=294
  Planning:
    Buffers: shared hit=75
- Planning Time: 0.634 ms
- Execution Time: 0.527 ms
+ Planning Time: 0.600 ms
+ Execution Time: 0.539 ms
 (15 rows)
 
 SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S1'));

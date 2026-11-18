@@ -17,8 +17,14 @@ DROP FUNCTION
 ALTER TABLE products DROP COLUMN IF EXISTS product_kind CASCADE,
                      DROP COLUMN IF EXISTS specs CASCADE;
 ALTER TABLE
+SELECT setval(pg_get_serial_sequence('products', 'product_id'), (SELECT max(product_id) FROM products));
+ setval 
+--------
+    200
+(1 row)
+
 CREATE EXTENSION IF NOT EXISTS vector;
-psql:00_prereqs.sql:28: NOTICE:  extension "vector" already exists, skipping
+psql:00_prereqs.sql:31: NOTICE:  extension "vector" already exists, skipping
 CREATE EXTENSION
 SELECT current_database() AS database,
        split_part(version(), ' on ', 1) AS server,
