@@ -1,0 +1,7 @@
+# Development / CI tooling only. Never installed in the production image.
+# Runtime dependencies live in requirements.txt (UTF-16 encoded).
+# Why each is here: see docs/ci-cd.md
+ruff==0.14.5
+coverage==7.11.3
+pip-audit==2.9.0
+bandit==1.8.6

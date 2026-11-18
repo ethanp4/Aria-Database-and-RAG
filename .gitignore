@@ -13,3 +13,7 @@ pgpass.conf
 # 
 pgdata
 venv
+
+# coverage output
+.coverage
+htmlcov/
