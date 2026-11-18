@@ -1,48 +1,54 @@
 {% extends "products/dashboard_base.html" %}
+{% load static %}
 
-{% block title %}New category{% endblock %}
+{% block title %}{{ page_title|default:"New category" }}{% endblock %}
 
 {% block dashboard_content %}
-<main class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8 col-xl-7">
-            <div class="mb-4">
-                <a href="{{ request.GET.next|default:'/dashboard/' }}" class="link-secondary">← Go Back</a>
+<div class="aria-page">
+    <a class="text-action" href="{{ request.GET.next|default:'/dashboard/' }}"><span aria-hidden="true">&larr;&nbsp;</span>Go back</a>
+
+    <div class="aria-page-narrow bo-stack">
+        <header class="page-heading">
+            <h1 id="category-form-heading">{{ page_title|default:"New category" }}</h1>
+            <p>{% if category %}Update this category's name or description.{% else %}Create a category, then continue adding or editing your product.{% endif %}</p>
+        </header>
+
+        {% if form.errors %}
+        <div class="alert alert-danger mb-0" role="alert">
+            <img class="alert-icon" src="{% static 'img/icons/triangle-alert.svg' %}" width="19" height="20" alt="">
+            <div class="bo-alert-text">
+                <span class="alert-title">Category could not be saved</span>
+                {% if form.non_field_errors %}{% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}{% else %}<span>Correct the highlighted fields.</span>{% endif %}
             </div>
-            <section class="card border-0 shadow-sm" aria-labelledby="category-form-heading">
-                <div class="card-body p-4 p-md-5">
-                    <h1 id="category-form-heading" class="h2 mb-2">New category</h1>
-                    <p class="text-body-secondary mb-4">Create a category, then continue adding or editing your product.</p>
-                    <form method="post">
-                        {% csrf_token %}
-                        {% if product %}
-                        <input type="hidden" name="return_product_id" value="{{ product.product_id }}">
-                        {% endif %}
-                        {% if form.non_field_errors %}
-                        <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
-                        {% endif %}
-
-                        {% for field in form %}
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}
-                            <div class="form-text">{{ field.help_text }}</div>
-                            {% endif %}
-                            {% if field.errors %}
-                            <div class="text-danger small mt-1">{{ field.errors }}</div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-
-                        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-                            <button class="btn btn-primary" type="submit">Create category</button>
-                            <a class="btn btn-outline-secondary" href="{{ request.GET.next|default:'/dashboard/' }}">Cancel</a>
-                        </div>
-                    </form>
-                </div>
-            </section>
         </div>
+        {% endif %}
+
+        <section class="aria-card" aria-labelledby="category-form-heading">
+            <form method="post" class="bo-form">
+                {% csrf_token %}
+                {% if product %}
+                <input type="hidden" name="return_product_id" value="{{ product.product_id }}">
+                {% endif %}
+
+                {% for field in form %}
+                <div class="aria-field-group">
+                    <div class="aria-field{% if field.errors %} is-invalid{% endif %}">
+                        <div class="aria-field__body">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    </div>
+                    {% if field.help_text %}<p class="bo-field-help">{{ field.help_text }}</p>{% endif %}
+                    {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="bo-form-actions">
+                    <button class="btn btn-primary" type="submit">{{ submit_label|default:"Create category" }}</button>
+                    <a class="btn btn-secondary" href="{{ request.GET.next|default:'/dashboard/' }}">Cancel</a>
+                </div>
+            </form>
+        </section>
     </div>
-</main>
+</div>
 {% endblock %}
