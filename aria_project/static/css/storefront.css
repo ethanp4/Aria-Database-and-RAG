@@ -15,18 +15,6 @@
 .aria-card p { margin: 0; }
 .alert p { margin: 0; }
 
-/* Django widgets carry Bootstrap .form-control/.form-select; inside the Figma
-   text field the box is drawn by .aria-field, so strip the inner control chrome */
-.aria-field .form-control, .aria-field .form-select,
-.aria-field .form-control:focus, .aria-field .form-select:focus {
-  min-height: 24px; padding: 0; border: 0; border-radius: 0; box-shadow: none; background-color: transparent;
-}
-.aria-field .form-select { background-position: right 0 center; padding-right: 24px; }
-.aria-field.is-invalid .form-control { padding-right: 0; }
-.aria-field-group .form-text { margin: 0; font-size: 16px; }
-.aria-field-group .field-error { margin-top: 0; }
-.aria-field__action[hidden] { display: none; }
-.aria-field__action[aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
 
 /* ---------- sign in / create account ---------- */
 .sf-auth__brand { padding: 32px; }

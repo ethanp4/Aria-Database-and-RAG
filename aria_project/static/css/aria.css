@@ -130,7 +130,7 @@ a { color: var(--color-brand-primary); }
 .aria-topnav__links a, .aria-topnav__links button {
   display: flex; align-items: center; height: 100%;
   font-size: 15px; font-weight: 500; color: var(--color-text-primary); text-decoration: none;
-  border: 0; background: none; padding: 0; position: relative;
+  border: 0; background: none; padding: 0; position: relative; white-space: nowrap;
 }
 .aria-topnav__links a:hover { color: var(--color-brand-primary); }
 .aria-topnav__links a[aria-current="page"]::after {
@@ -288,6 +288,29 @@ a { color: var(--color-brand-primary); }
   color: var(--color-brand-primary); font-size: 16px; text-align: right; white-space: nowrap;
 }
 .aria-field-group { display: flex; flex-direction: column; gap: 8px; }
+
+/* Django widgets (.form-control/.form-select) inside the Figma text field: the
+   .aria-field box draws the border and focus ring, so strip the inner chrome */
+.aria-field .form-control, .aria-field .form-select,
+.aria-field .form-control:focus, .aria-field .form-select:focus {
+  min-height: 24px; padding: 0; border: 0; border-radius: 0; box-shadow: none; background-color: transparent;
+}
+.aria-field .form-select { background-position: right 0 center; padding-right: 24px; cursor: pointer; }
+.aria-field.is-invalid .form-control { padding-right: 0; }
+.aria-field-group .form-text { margin: 0; font-size: 16px; }
+.aria-field-group .field-error { margin-top: 0; }
+.aria-field__action[hidden] { display: none; }
+.aria-field__action[aria-pressed="true"] { font-weight: 600; text-decoration: underline; }
+
+/* Figma accent action (review / place order): accent fill with dark label; white on
+   the accent fails AA contrast */
+.btn-accent {
+  --bs-btn-bg: #ff5a36; --bs-btn-border-color: #ff5a36; --bs-btn-color: var(--color-text-primary);
+  --bs-btn-hover-bg: #e94a27; --bs-btn-hover-border-color: #e94a27; --bs-btn-hover-color: var(--color-text-primary);
+  --bs-btn-active-bg: #e94a27; --bs-btn-active-border-color: #e94a27; --bs-btn-active-color: var(--color-text-primary);
+  --bs-btn-disabled-bg: var(--color-bg-subtle); --bs-btn-disabled-border-color: var(--color-bg-subtle);
+  --bs-btn-disabled-color: var(--color-brand-primary); --bs-btn-disabled-opacity: 1;
+}
 
 /* ---------- alerts (Figma Alertbanner) ---------- */
 .alert {
