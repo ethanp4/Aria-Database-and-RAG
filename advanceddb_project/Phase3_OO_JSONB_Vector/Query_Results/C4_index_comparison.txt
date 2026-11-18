@@ -1,0 +1,145 @@
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT review_id FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=465.96..482.27 rows=10 width=16) (actual time=0.573..0.605 rows=10.00 loops=1)
+   Buffers: shared hit=385
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries  (cost=0.15..8.17 rows=1 width=32) (actual time=0.015..0.015 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'S4'::text)
+           Index Searches: 1
+           Buffers: shared hit=2
+   ->  Index Scan using review_embeddings_hnsw on review_embeddings  (cost=457.79..4355.80 rows=2390 width=16) (actual time=0.567..0.597 rows=10.00 loops=1)
+         Order By: (embedding <=> (InitPlan 1).col1)
+         Index Searches: 1
+         Buffers: shared hit=385
+ Planning:
+   Buffers: shared hit=139
+ Planning Time: 0.823 ms
+ Execution Time: 0.650 ms
+(15 rows)
+
+CREATE TEMP TABLE top10_hnsw AS
+SELECT row_number() OVER (ORDER BY d) AS rank, review_id, d
+FROM (SELECT review_id, embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') AS d FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10) s;
+SELECT 10
+SET enable_indexscan = off;
+SET
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT review_id FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10;
+                                                             QUERY PLAN                                                              
+-------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=567.69..567.72 rows=10 width=16) (actual time=1.181..1.184 rows=10.00 loops=1)
+   Buffers: shared hit=480
+   InitPlan 1
+     ->  Bitmap Heap Scan on eval_queries  (cost=4.16..8.17 rows=1 width=32) (actual time=0.009..0.010 rows=1.00 loops=1)
+           Recheck Cond: ((query_id)::text = 'S4'::text)
+           Heap Blocks: exact=1
+           Buffers: shared hit=2
+           ->  Bitmap Index Scan on eval_queries_pkey  (cost=0.00..4.16 rows=1 width=0) (actual time=0.005..0.005 rows=1.00 loops=1)
+                 Index Cond: ((query_id)::text = 'S4'::text)
+                 Index Searches: 1
+                 Buffers: shared hit=1
+   ->  Sort  (cost=559.52..565.50 rows=2390 width=16) (actual time=1.180..1.181 rows=10.00 loops=1)
+         Sort Key: ((review_embeddings.embedding <=> (InitPlan 1).col1))
+         Sort Method: top-N heapsort  Memory: 25kB
+         Buffers: shared hit=480
+         ->  Seq Scan on review_embeddings  (cost=0.00..507.88 rows=2390 width=16) (actual time=0.017..1.006 rows=2390.00 loops=1)
+               Buffers: shared hit=480
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.077 ms
+ Execution Time: 1.204 ms
+(21 rows)
+
+CREATE TEMP TABLE top10_exact AS
+SELECT row_number() OVER (ORDER BY d) AS rank, review_id, d
+FROM (SELECT review_id, embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') AS d FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S4') LIMIT 10) s;
+SELECT 10
+RESET enable_indexscan;
+RESET
+SELECT x.rank, x.review_id AS exact_review, round(x.d::numeric, 4) AS exact_distance,
+       h.review_id AS hnsw_review, round(h.d::numeric, 4) AS hnsw_distance,
+       x.review_id = h.review_id AS same
+FROM top10_exact x JOIN top10_hnsw h USING (rank)
+ORDER BY x.rank;
+ rank | exact_review | exact_distance | hnsw_review | hnsw_distance | same 
+------+--------------+----------------+-------------+---------------+------
+    1 |         1356 |         0.2810 |        1356 |        0.2810 | t
+    2 |         1298 |         0.3396 |        1298 |        0.3396 | t
+    3 |         1297 |         0.3430 |        1297 |        0.3430 | t
+    4 |         1566 |         0.3759 |        1566 |        0.3759 | t
+    5 |          474 |         0.3856 |         474 |        0.3856 | t
+    6 |          330 |         0.3913 |         330 |        0.3913 | t
+    7 |          105 |         0.3938 |         105 |        0.3938 | t
+    8 |         1748 |         0.3949 |        1748 |        0.3949 | t
+    9 |         1140 |         0.3961 |        1140 |        0.3961 | t
+   10 |         1794 |         0.4020 |        1794 |        0.4020 | t
+(10 rows)
+
+SELECT count(*) AS top10_results_in_both, '10' AS out_of
+FROM top10_exact x JOIN top10_hnsw h USING (review_id);
+ top10_results_in_both | out_of 
+-----------------------+--------
+                    10 | 10
+(1 row)
+
+CREATE TEMP TABLE recall (ef_search INT, query_id TEXT, overlap INT);
+CREATE TABLE
+CREATE TEMP TABLE recall_a (review_id BIGINT);
+CREATE TABLE
+CREATE TEMP TABLE recall_b (review_id BIGINT);
+CREATE TABLE
+DO $$
+DECLARE
+    ef INT;
+    q  RECORD;
+    n  INT;
+BEGIN
+    FOREACH ef IN ARRAY ARRAY[10, 40, 100] LOOP
+        PERFORM set_config('hnsw.ef_search', ef::text, true);
+        FOR q IN SELECT query_id, embedding FROM eval_queries LOOP
+            -- dynamic SQL so each statement is planned with the current enable_indexscan setting
+            TRUNCATE recall_a, recall_b;
+            PERFORM set_config('enable_indexscan', 'on', true);
+            EXECUTE 'INSERT INTO recall_a SELECT review_id FROM review_embeddings
+                     ORDER BY embedding <=> $1 LIMIT 10' USING q.embedding;
+            PERFORM set_config('enable_indexscan', 'off', true);
+            EXECUTE 'INSERT INTO recall_b SELECT review_id FROM review_embeddings
+                     ORDER BY embedding <=> $1 LIMIT 10' USING q.embedding;
+            SELECT count(*) INTO n FROM recall_a JOIN recall_b USING (review_id);
+            INSERT INTO recall VALUES (ef, q.query_id, n);
+        END LOOP;
+    END LOOP;
+END $$;
+DO
+SELECT ef_search, string_agg(query_id || '=' || overlap, '  ' ORDER BY query_id) AS overlap_per_query,
+       round(avg(overlap) / 10, 3) AS mean_recall_at_10
+FROM recall GROUP BY ef_search ORDER BY ef_search;
+ ef_search |                       overlap_per_query                       | mean_recall_at_10 
+-----------+---------------------------------------------------------------+-------------------
+        10 | D1=10  F1=10  H1=6  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10  |             0.956
+        40 | D1=10  F1=10  H1=9  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10  |             0.989
+       100 | D1=10  F1=10  H1=10  S1=10  S2=10  S3=10  S4=10  S5=10  S6=10 |             1.000
+(3 rows)
+
+SELECT c.relname AS relation, pg_size_pretty(pg_relation_size(c.oid)) AS size
+FROM pg_class c
+WHERE c.relname IN ('review_embeddings', 'review_embeddings_hnsw', 'product_reviews', 'reviews_tsv_gin',
+                    'reviews_details_gin', 'products_specs_gin')
+ORDER BY pg_relation_size(c.oid) DESC;
+        relation        |  size   
+------------------------+---------
+ review_embeddings_hnsw | 4792 kB
+ review_embeddings      | 3824 kB
+ product_reviews        | 2048 kB
+ reviews_tsv_gin        | 1464 kB
+ reviews_details_gin    | 304 kB
+ products_specs_gin     | 48 kB
+(6 rows)
+
+Timing is on.
+REINDEX INDEX review_embeddings_hnsw;
+REINDEX
+Time: 395.765 ms
+Timing is off.

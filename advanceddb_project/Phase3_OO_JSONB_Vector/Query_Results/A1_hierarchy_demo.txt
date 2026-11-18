@@ -1,0 +1,127 @@
+SELECT table_name,
+       count(*) AS columns,
+       string_agg(column_name, ', ' ORDER BY ordinal_position) AS column_list
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name IN ('products', 'wearable_gear', 'life_support_equipment', 'dive_electronics', 'safety_accessory')
+GROUP BY table_name
+ORDER BY table_name = 'products' DESC, table_name;
+       table_name       | columns |                                                                         column_list                                                                          
+------------------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ products               |      14 | product_id, sku, name, description, category_id, unit_price, currency, stock_quantity, reorder_level, is_active, created_at, updated_at, product_kind, specs
+ dive_electronics       |       5 | product_id, product_kind, battery_type, battery_life_h, warranty_months
+ life_support_equipment |       5 | product_id, product_kind, service_interval_months, max_depth_m, cold_water_rated
+ safety_accessory       |       4 | product_id, product_kind, visibility_rating, corrosion_resistant
+ wearable_gear          |       5 | product_id, product_kind, material, thickness_mm, fit_type
+(5 rows)
+
+SELECT p.product_id, p.sku, p.name, p.unit_price, w.material, w.thickness_mm, w.fit_type
+FROM products p JOIN wearable_gear w USING (product_id)
+WHERE p.sku IN ('SUIT-002', 'MASK-001', 'GEN-BOOT-04');
+ product_id |     sku     |              name              | unit_price |         material         | thickness_mm | fit_type  
+------------+-------------+--------------------------------+------------+--------------------------+--------------+-----------
+          1 | MASK-001    | Low-volume dive mask           |      74.95 | tempered glass, silicone |              | FACE_SEAL
+         14 | SUIT-002    | 5 mm hooded wetsuit            |     459.00 | neoprene                 |          5.0 | FULL_BODY
+        124 | GEN-BOOT-04 | Cold-water Neoprene dive boots |      96.70 | neoprene                 |          7.0 | BOOT
+(3 rows)
+
+WITH sample AS (
+    SELECT *, row_number() OVER (PARTITION BY product_kind ORDER BY product_id) AS n
+    FROM v_product_catalogue
+)
+SELECT product_kind, sku, name, kind_detail, care_rule,
+       care_interval_months AS months,
+       fn_care_due_date(product_id, DATE '2026-06-01') AS care_due_if_bought_2026_06_01
+FROM sample
+WHERE n <= 2
+ORDER BY product_kind, sku;
+ product_kind |   sku    |              name              |                       kind_detail                        |               care_rule                | months | care_due_if_bought_2026_06_01 
+--------------+----------+--------------------------------+----------------------------------------------------------+----------------------------------------+--------+-------------------------------
+ ACCESSORY    | COMP-004 | Wrist compass                  | visibility 2/5                                           | annual safety inspection               |     12 | 2027-06-01
+ ACCESSORY    | COMP-005 | Depth and timing gauge         | visibility 2/5, corrosion resistant                      | annual safety inspection               |     12 | 2027-06-01
+ ELECTRONICS  | COMP-001 | Wrist dive computer            | rechargeable li ion battery, 60 h, 24-month warranty     | battery check before the warranty ends |     24 | 2028-06-01
+ ELECTRONICS  | COMP-002 | Air-integrated dive computer   | rechargeable li ion battery, 40 h, 24-month warranty     | battery check before the warranty ends |     24 | 2028-06-01
+ LIFE_SUPPORT | REG-001  | Balanced diaphragm first stage | service every 12 months, rated to 40 m, cold-water rated | regulator/BCD service by a technician  |     12 | 2027-06-01
+ LIFE_SUPPORT | REG-002  | Adjustable second stage        | service every 12 months, rated to 40 m                   | regulator/BCD service by a technician  |     12 | 2027-06-01
+ WEARABLE     | MASK-001 | Low-volume dive mask           | Face Seal, tempered glass, silicone                      | replace straps and seals               |     36 | 2029-06-01
+ WEARABLE     | MASK-002 | Wide-view dive mask            | Face Seal, tempered glass, silicone                      | replace straps and seals               |     36 | 2029-06-01
+(8 rows)
+
+SELECT v.product_kind,
+       count(*) AS items_sold,
+       count(*) FILTER (WHERE fn_care_due_date(v.product_id, o.delivered_at::date) <= DATE '2026-12-31')
+           AS care_due_by_end_of_2026
+FROM order_items oi
+JOIN orders o ON o.order_id = oi.order_id AND o.delivered_at IS NOT NULL
+JOIN v_product_catalogue v ON v.product_id = oi.product_id
+GROUP BY v.product_kind
+ORDER BY v.product_kind;
+ product_kind | items_sold | care_due_by_end_of_2026 
+--------------+------------+-------------------------
+ ACCESSORY    |        278 |                      66
+ ELECTRONICS  |         78 |                       9
+ LIFE_SUPPORT |         81 |                      10
+ WEARABLE     |        433 |                       0
+(4 rows)
+
+BEGIN;
+BEGIN
+SET LOCAL ROLE aria_catalogue_app;
+SET
+SELECT count(*) AS products_visible_through_view FROM v_product_catalogue;
+ products_visible_through_view 
+-------------------------------
+                           200
+(1 row)
+
+SAVEPOINT direct_table_access;
+SAVEPOINT
+SELECT sku, unit_price FROM products LIMIT 1;
+psql:A1_hierarchy_demo.sql:64: ERROR:  permission denied for table products
+ROLLBACK TO SAVEPOINT direct_table_access;
+ROLLBACK
+SELECT fn_add_product(
+    'ELECTRONICS', 'GEN-COMP-99', 'Demo wrist dive computer', 5, 429.00,
+    '{"weight_g": 118, "colours": ["black"], "features": {"nitrox": true, "max_o2_pct": 40, "gas_mixes": 2}}',
+    '{"battery_type": "RECHARGEABLE_LI_ION", "battery_life_h": 45, "warranty_months": 24}') AS new_product_id
+SELECT fn_describe_product(209) AS describe,
+       fn_care_due_date(209, DATE '2026-11-18') AS care_due;
+                                           describe                                           |  care_due  
+----------------------------------------------------------------------------------------------+------------
+ Demo wrist dive computer [ELECTRONICS]: rechargeable li ion battery, 45 h, 24-month warranty | 2028-11-18
+(1 row)
+
+RESET ROLE;
+RESET
+ROLLBACK;
+ROLLBACK
+INSERT INTO dive_electronics (product_id, battery_type, battery_life_h, warranty_months)
+VALUES (1, 'RECHARGEABLE_LI_ION', 40, 24);
+psql:A1_hierarchy_demo.sql:84: ERROR:  insert or update on table "dive_electronics" violates foreign key constraint "electronics_is_a_product"
+DETAIL:  Key (product_id, product_kind)=(1, ELECTRONICS) is not present in table "products".
+UPDATE products SET product_kind = 'ACCESSORY' WHERE product_id = 1;
+psql:A1_hierarchy_demo.sql:88: ERROR:  update or delete on table "products" violates foreign key constraint "wearable_is_a_product" on table "wearable_gear"
+DETAIL:  Key (product_id, product_kind)=(1, WEARABLE) is still referenced from table "wearable_gear".
+BEGIN;
+BEGIN
+INSERT INTO products (sku, name, category_id, unit_price, product_kind, specs)
+VALUES ('GEN-ORPHAN-01', 'Product with no subclass row', 5, 10.00, 'ELECTRONICS', '{"weight_g": 50}');
+INSERT 0 1
+COMMIT;
+psql:A1_hierarchy_demo.sql:96: ERROR:  Product 210 is a ELECTRONICS but has no row in its subclass table
+HINT:  Create products through fn_add_product(), which writes both rows.
+CONTEXT:  PL/pgSQL function fn_check_product_subclass() line 18 at RAISE
+INSERT INTO product_reviews (product_id, account_id, order_id, rating, title, body)
+SELECT oi.product_id, (SELECT min(account_id) FROM accounts WHERE account_type = 'user' AND account_id <> o.account_id),
+       o.order_id, 5, 'Fake verified review', 'Trying to attach someone else''s order.'
+FROM orders o JOIN order_items oi USING (order_id)
+WHERE o.delivered_at IS NOT NULL AND o.account_id IS NOT NULL
+ORDER BY o.order_id LIMIT 1;
+psql:A1_hierarchy_demo.sql:105: ERROR:  Review cannot be verified: order 1 was not delivered to account 1 with product 10
+CONTEXT:  PL/pgSQL function fn_check_verified_purchase() line 12 at RAISE
+SELECT count(*) AS products, (SELECT count(*) FROM product_reviews) AS reviews FROM products;
+ products | reviews 
+----------+---------
+      200 |    2390
+(1 row)
+

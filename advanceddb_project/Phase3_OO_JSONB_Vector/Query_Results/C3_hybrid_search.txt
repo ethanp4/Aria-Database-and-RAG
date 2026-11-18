@@ -1,0 +1,117 @@
+SELECT count(*) FILTER (WHERE body LIKE '%Whytecliff%') AS reviews_mentioning_whytecliff,
+       count(*) AS all_reviews
+FROM product_reviews;
+ reviews_mentioning_whytecliff | all_reviews 
+-------------------------------+-------------
+                            40 |        2390
+(1 row)
+
+SELECT s.rank, s.review_id, s.sku, s.distance,
+       r.body LIKE '%Whytecliff%' AS mentions_whytecliff,
+       left(r.body, 110) AS body
+FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'H1'), 10) s
+JOIN product_reviews r USING (review_id)
+ORDER BY s.rank;
+ rank | review_id |     sku      | distance | mentions_whytecliff |                                                      body                                                      
+------+-----------+--------------+----------+---------------------+----------------------------------------------------------------------------------------------------------------
+    1 |      1659 | GEN-REG1-02  |   0.4842 | t                   | Mixed experience with this one at Whytecliff Park. Inhalation effort stays light at depth and with heavy exert
+    2 |      2238 | GEN-SMB-05   |   0.5189 | f                   | The warm-water surface marker buoy is okay, with a few things I would change. My buddy and I are both advanced
+    3 |      1618 | GEN-LIGHT-01 |   0.5238 | f                   | Mixed experience with this one at Roatan. Packing up at the end of the trip gave me a chance to look it over c
+    4 |      1744 | FIN-003      |   0.5249 | f                   | After 8 dives I can say this is one of my best purchases. Visibility was poor on a couple of dives because of 
+    5 |      2390 | GEN-SMB-02   |   0.5269 | f                   | Mixed experience with this one at Les Escoumins. Packing up at the end of the trip gave me a chance to look it
+    6 |      1948 | GEN-SMB-07   |   0.5285 | f                   | Mostly happy with the expedition surface marker buoy after 40 dives. We did six days of boat diving with two d
+    7 |       283 | GEN-GLOVE-10 |   0.5337 | t                   | Had a bad experience with this at Whytecliff Park. Too bulky to operate clips or the camera buttons. Runs smal
+    8 |      1237 | GEN-BOOT-06  |   0.5346 | f                   | Used it at Brockville last month and it did the job well. Rugged sole protected my feet walking over barnacles
+    9 |      2348 | GEN-GLOVE-09 |   0.5355 | f                   | Really unhappy with the technical neoprene dive gloves. Packing up at the end of the trip gave me a chance to 
+   10 |        80 | GEN-BOOT-06  |   0.5367 | f                   | After 15 dives I can say this is one of my best purchases. Foot pocket is comfortable even on long dives. Rugg
+(10 rows)
+
+SELECT row_number() OVER (ORDER BY ts_rank_cd(body_tsv, q) DESC, review_id) AS rank,
+       review_id, round(ts_rank_cd(body_tsv, q)::numeric, 4) AS ts_rank,
+       left(body, 110) AS body
+FROM product_reviews, websearch_to_tsquery('english', 'Whytecliff') AS q
+WHERE body_tsv @@ q
+ORDER BY rank
+LIMIT 5;
+ rank | review_id | ts_rank |                                                      body                                                      
+------+-----------+---------+----------------------------------------------------------------------------------------------------------------
+    1 |        52 |  0.1000 | Bought this before a trip to Whytecliff Park and it was perfect. Still shiny with no corrosion after months on
+    2 |       107 |  0.1000 | Bought this before a trip to Whytecliff Park and it was perfect. The menus are intuitive and I set it up witho
+    3 |       221 |  0.1000 | Bought this before a trip to Whytecliff Park and it was perfect. The purge valve clears water with one easy pu
+    4 |       251 |  0.1000 | Used it at Whytecliff Park last month and it did the job well. Seals well on my face, even with a bit of stubb
+    5 |       283 |  0.1000 | Had a bad experience with this at Whytecliff Park. Too bulky to operate clips or the camera buttons. Runs smal
+(5 rows)
+
+WITH vec AS (
+    SELECT review_id, row_number() OVER (ORDER BY d) AS rnk
+    FROM (SELECT review_id, embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'H1') AS d
+          FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'H1') LIMIT 50) v
+), fts AS (
+    SELECT review_id, row_number() OVER (ORDER BY ts_rank_cd(body_tsv, q) DESC, review_id) AS rnk
+    FROM product_reviews, websearch_to_tsquery('english', 'Whytecliff') AS q
+    WHERE body_tsv @@ q
+    ORDER BY rnk LIMIT 50
+), fused AS (
+    SELECT review_id,
+           sum(1.0 / (60 + rnk))                AS rrf,
+           max(rnk) FILTER (WHERE src = 'vec')  AS vector_rank,
+           max(rnk) FILTER (WHERE src = 'fts')  AS text_rank
+    FROM (SELECT review_id, rnk, 'vec' AS src FROM vec
+          UNION ALL
+          SELECT review_id, rnk, 'fts' FROM fts) s
+    GROUP BY review_id
+)
+SELECT row_number() OVER (ORDER BY f.rrf DESC, f.review_id) AS rank,
+       f.review_id, p.sku, round(f.rrf, 5) AS rrf, f.vector_rank, f.text_rank,
+       r.body LIKE '%Whytecliff%' AS mentions_whytecliff,
+       left(r.body, 100) AS body
+FROM fused f
+JOIN product_reviews r USING (review_id)
+JOIN products p USING (product_id)
+ORDER BY f.rrf DESC, f.review_id
+LIMIT 10;
+ rank | review_id |      sku      |   rrf   | vector_rank | text_rank | mentions_whytecliff |                                                 body                                                 
+------+-----------+---------------+---------+-------------+-----------+---------------------+------------------------------------------------------------------------------------------------------
+    1 |       283 | GEN-GLOVE-10  | 0.03031 |           7 |         5 | t                   | Had a bad experience with this at Whytecliff Park. Too bulky to operate clips or the camera buttons.
+    2 |      1659 | GEN-REG1-02   | 0.02830 |           1 |        24 | t                   | Mixed experience with this one at Whytecliff Park. Inhalation effort stays light at depth and with h
+    3 |      1969 | GEN-GLOVE-04  | 0.02462 |          14 |        30 | t                   | Had a bad experience with this at Whytecliff Park. I could feel the cold seeping in on every dive an
+    4 |      1281 | GEN-BOOT-04   | 0.02349 |          31 |        20 | t                   | Used it at Whytecliff Park last month and it did the job well. My feet ached and cramped by the end 
+    5 |      2155 | GEN-REG1-03   | 0.02347 |          16 |        37 | t                   | Had a bad experience with this at Whytecliff Park. Started uncontrollably dumping air on a winter di
+    6 |        52 | REEL-001      | 0.01639 |             |         1 | t                   | Bought this before a trip to Whytecliff Park and it was perfect. Still shiny with no corrosion after
+    7 |       107 | GEN-AICOMP-06 | 0.01613 |             |         2 | t                   | Bought this before a trip to Whytecliff Park and it was perfect. The menus are intuitive and I set i
+    8 |      2238 | GEN-SMB-05    | 0.01613 |           2 |           | f                   | The warm-water surface marker buoy is okay, with a few things I would change. My buddy and I are bot
+    9 |       221 | GEN-SNORK-04  | 0.01587 |             |         3 | t                   | Bought this before a trip to Whytecliff Park and it was perfect. The purge valve clears water with o
+   10 |      1618 | GEN-LIGHT-01  | 0.01587 |           3 |           | f                   | Mixed experience with this one at Roatan. Packing up at the end of the trip gave me a chance to look
+(10 rows)
+
+WITH vec_ranked AS (
+    SELECT review_id, row_number() OVER (ORDER BY d) AS rnk
+    FROM (SELECT review_id, embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'H1') AS d
+          FROM review_embeddings ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'H1') LIMIT 50) v
+), fts AS (
+    SELECT review_id, row_number() OVER (ORDER BY ts_rank_cd(body_tsv, q) DESC, review_id) AS rnk
+    FROM product_reviews, websearch_to_tsquery('english', 'Whytecliff') AS q
+    WHERE body_tsv @@ q ORDER BY rnk LIMIT 50
+), hybrid AS (
+    SELECT review_id, row_number() OVER (ORDER BY sum(1.0 / (60 + rnk)) DESC, review_id) AS rnk
+    FROM (SELECT review_id, rnk FROM vec_ranked UNION ALL SELECT review_id, rnk FROM fts) s
+    GROUP BY review_id
+), scored AS (
+    SELECT 'vector only' AS method, v.rnk, r.body LIKE '%Whytecliff%' AS rel
+    FROM vec_ranked v JOIN product_reviews r USING (review_id)
+    UNION ALL
+    SELECT 'hybrid (FTS + vector, RRF)', h.rnk, r.body LIKE '%Whytecliff%'
+    FROM hybrid h JOIN product_reviews r USING (review_id)
+)
+SELECT method,
+       count(*) FILTER (WHERE rel AND rnk <= 5)  || '/5'  AS "precision@5",
+       count(*) FILTER (WHERE rel AND rnk <= 10) || '/10' AS "precision@10"
+FROM scored
+GROUP BY method
+ORDER BY method DESC;
+           method           | precision@5 | precision@10 
+----------------------------+-------------+--------------
+ vector only                | 1/5         | 2/10
+ hybrid (FTS + vector, RRF) | 5/5         | 8/10
+(2 rows)
+

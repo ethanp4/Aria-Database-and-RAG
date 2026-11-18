@@ -1,0 +1,158 @@
+SELECT row_number() OVER (ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1')) AS rank,
+       r.review_id, p.sku, p.product_kind,
+       r.details #>> '{dive_context,site}'          AS site,
+       r.details #>> '{dive_context,water_temp_c}'  AS water_c,
+       round((e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1'))::numeric, 4)     AS distance,
+       left(r.body, 110)                            AS body
+FROM review_embeddings e
+JOIN product_reviews r USING (review_id)
+JOIN products p USING (product_id)
+WHERE p.product_kind = 'LIFE_SUPPORT'
+  AND r.details @? '$.dive_context.water_temp_c ? (@ <= 8)'
+ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1')
+LIMIT 5;
+ rank | review_id |     sku     | product_kind |      site       | water_c | distance |                                                      body                                                      
+------+-----------+-------------+--------------+-----------------+---------+----------+----------------------------------------------------------------------------------------------------------------
+    1 |       532 | GEN-REG2-04 | LIFE_SUPPORT | Bonne Bay       | 6       |   0.4970 | Not impressed with the cold-water adjustable regulator second stage so far. I really have to suck to get air o
+    2 |       592 | GEN-REG2-04 | LIFE_SUPPORT | Whytecliff Park | 6       |   0.5042 | I have had the cold-water adjustable regulator second stage for a season now and I am really impressed. No fre
+    3 |      1777 | GEN-REG1-05 | LIFE_SUPPORT | Tobermory       | 6       |   0.5233 | After 59 dives the warm-water balanced regulator first stage is fine but not special. Iced up and blasted gas 
+    4 |      1316 | GEN-REG1-08 | LIFE_SUPPORT | Tobermory       | 7       |   0.5238 | Bought this before a trip to Tobermory and it was perfect. No free flow even in 4 degree water.
+    5 |       766 | GEN-REG2-01 | LIFE_SUPPORT | Whytecliff Park | 6       |   0.5276 | The recreational adjustable regulator second stage lasted 22 dives before I gave up on it. Environmentally sea
+(5 rows)
+
+SELECT count(*) AS candidates_after_filters
+FROM product_reviews r JOIN products p USING (product_id)
+WHERE p.product_kind = 'LIFE_SUPPORT'
+  AND r.details @? '$.dive_context.water_temp_c ? (@ <= 8)';
+ candidates_after_filters 
+--------------------------
+                      107
+(1 row)
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT r.review_id
+FROM review_embeddings e
+JOIN product_reviews r USING (review_id)
+JOIN products p USING (product_id)
+WHERE p.product_kind = 'LIFE_SUPPORT'
+  AND r.details @? '$.dive_context.water_temp_c ? (@ <= 8)'
+ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1')
+LIMIT 5;
+                                                                                 QUERY PLAN                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=552.03..552.04 rows=5 width=16) (actual time=1.081..1.084 rows=5.00 loops=1)
+   Buffers: shared hit=586
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.007 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'F1'::text)
+           Index Searches: 1
+           Buffers: shared hit=2
+   ->  Sort  (cost=543.86..544.04 rows=72 width=16) (actual time=1.080..1.082 rows=5.00 loops=1)
+         Sort Key: ((e.embedding <=> (InitPlan 1).col1))
+         Sort Method: top-N heapsort  Memory: 25kB
+         Buffers: shared hit=586
+         ->  Nested Loop  (cost=22.88..542.67 rows=72 width=16) (actual time=0.075..1.064 rows=107.00 loops=1)
+               Buffers: shared hit=586
+               ->  Hash Join  (cost=22.60..309.52 rows=72 width=8) (actual time=0.056..0.873 rows=107.00 loops=1)
+                     Hash Cond: (r.product_id = p.product_id)
+                     Buffers: shared hit=263
+                     ->  Seq Scan on product_reviews r  (cost=0.00..285.88 rows=388 width=16) (actual time=0.005..0.801 rows=407.00 loops=1)
+                           Filter: (details @? '$."dive_context"."water_temp_c"?(@ <= 8)'::jsonpath)
+                           Rows Removed by Filter: 1983
+                           Buffers: shared hit=256
+                     ->  Hash  (cost=22.14..22.14 rows=37 width=8) (actual time=0.029..0.029 rows=37.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                           Buffers: shared hit=7
+                           ->  Index Only Scan using products_id_kind_unique on products p  (cost=0.27..22.14 rows=37 width=8) (actual time=0.014..0.024 rows=37.00 loops=1)
+                                 Index Cond: (product_kind = 'LIFE_SUPPORT'::text)
+                                 Heap Fetches: 5
+                                 Index Searches: 1
+                                 Buffers: shared hit=7
+               ->  Index Scan using review_embeddings_pkey on review_embeddings e  (cost=0.28..3.24 rows=1 width=1552) (actual time=0.001..0.001 rows=1.00 loops=107)
+                     Index Cond: (review_id = r.review_id)
+                     Index Searches: 107
+                     Buffers: shared hit=321
+ Planning:
+   Buffers: shared hit=28
+ Planning Time: 0.336 ms
+ Execution Time: 1.115 ms
+(36 rows)
+
+SET enable_sort = off;
+SET
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT r.review_id
+FROM review_embeddings e
+JOIN product_reviews r USING (review_id)
+JOIN products p USING (product_id)
+WHERE p.product_kind = 'LIFE_SUPPORT'
+  AND r.details @? '$.dive_context.water_temp_c ? (@ <= 8)'
+ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1')
+LIMIT 5;
+                                                                                 QUERY PLAN                                                                                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=466.52..865.00 rows=5 width=16) (actual time=0.883..0.929 rows=5.00 loops=1)
+   Buffers: shared hit=496
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries  (cost=0.15..8.17 rows=1 width=32) (actual time=0.008..0.009 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'F1'::text)
+           Index Searches: 1
+           Buffers: shared hit=2
+   ->  Nested Loop  (cost=458.35..6196.45 rows=72 width=16) (actual time=0.883..0.927 rows=5.00 loops=1)
+         Buffers: shared hit=496
+         ->  Nested Loop  (cost=458.07..6126.36 rows=388 width=1560) (actual time=0.572..0.607 rows=5.00 loops=1)
+               Buffers: shared hit=487
+               ->  Index Scan using review_embeddings_hnsw on review_embeddings e  (cost=457.79..4349.82 rows=2390 width=1552) (actual time=0.544..0.553 rows=8.00 loops=1)
+                     Order By: (embedding <=> (InitPlan 1).col1)
+                     Index Searches: 1
+                     Buffers: shared hit=463
+               ->  Index Scan using product_reviews_pkey on product_reviews r  (cost=0.28..0.74 rows=1 width=16) (actual time=0.006..0.006 rows=0.62 loops=8)
+                     Index Cond: (review_id = e.review_id)
+                     Filter: (details @? '$."dive_context"."water_temp_c"?(@ <= 8)'::jsonpath)
+                     Rows Removed by Filter: 0
+                     Index Searches: 8
+                     Buffers: shared hit=24
+         ->  Memoize  (cost=0.28..0.35 rows=1 width=8) (actual time=0.063..0.063 rows=1.00 loops=5)
+               Cache Key: r.product_id
+               Cache Mode: logical
+               Hits: 1  Misses: 4  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+               Buffers: shared hit=9
+               ->  Index Only Scan using products_id_kind_unique on products p  (cost=0.27..0.34 rows=1 width=8) (actual time=0.004..0.004 rows=1.00 loops=4)
+                     Index Cond: ((product_id = r.product_id) AND (product_kind = 'LIFE_SUPPORT'::text))
+                     Heap Fetches: 0
+                     Index Searches: 4
+                     Buffers: shared hit=9
+ Planning:
+   Buffers: shared hit=28
+ Planning Time: 0.298 ms
+ Execution Time: 0.950 ms
+(35 rows)
+
+SET hnsw.iterative_scan = off;
+SET
+SELECT count(*) AS rows_returned_without_iterative_scan
+FROM (SELECT r.review_id
+      FROM review_embeddings e JOIN product_reviews r USING (review_id) JOIN products p USING (product_id)
+      WHERE p.product_kind = 'ACCESSORY'
+      ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1') LIMIT 5) s;
+ rows_returned_without_iterative_scan 
+--------------------------------------
+                                    0
+(1 row)
+
+SET hnsw.iterative_scan = relaxed_order;
+SET
+SELECT count(*) AS rows_returned_with_iterative_scan
+FROM (SELECT r.review_id
+      FROM review_embeddings e JOIN product_reviews r USING (review_id) JOIN products p USING (product_id)
+      WHERE p.product_kind = 'ACCESSORY'
+      ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'F1') LIMIT 5) s;
+ rows_returned_with_iterative_scan 
+-----------------------------------
+                                 5
+(1 row)
+
+RESET hnsw.iterative_scan;
+RESET
+RESET enable_sort;
+RESET

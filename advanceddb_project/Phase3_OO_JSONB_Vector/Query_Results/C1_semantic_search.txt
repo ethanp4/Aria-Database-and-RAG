@@ -1,0 +1,95 @@
+SELECT query_id, query_text FROM eval_queries WHERE query_id LIKE 'S%' ORDER BY query_id;
+ query_id |                          query_text                          
+----------+--------------------------------------------------------------
+ S1       | my mask keeps steaming up so I can't see anything underwater
+ S2       | my wetsuit wasn't warm enough and I got really cold
+ S3       | regulator is hard to breathe from on deep dives
+ S4       | dive computer battery runs out too quickly
+ S5       | light gear that is easy to pack when flying to a dive trip
+ S6       | fins that hurt my feet
+(6 rows)
+
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT review_id
+FROM review_embeddings
+ORDER BY embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'S1')
+LIMIT 5;
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.472..0.487 rows=5.00 loops=1)
+   Buffers: shared hit=311
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.007..0.008 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'S1'::text)
+           Index Searches: 1
+           Buffers: shared hit=2
+   ->  Index Scan using review_embeddings_hnsw on review_embeddings (actual time=0.470..0.484 rows=5.00 loops=1)
+         Order By: (embedding <=> (InitPlan 1).col1)
+         Index Searches: 1
+         Buffers: shared hit=311
+ Planning:
+   Buffers: shared hit=75
+ Planning Time: 0.634 ms
+ Execution Time: 0.527 ms
+(15 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S1'));
+ rank | review_id |     sku     | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+-------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |      1167 | GEN-MASK-09 | WEARABLE     |      1 |   0.4073 | Returned it. Really unhappy with the technical low-volume dive mask. Condensation builds up inside the glass and I spend half the dive clearing it. Wa
+    2 |      1166 | MASK-001    | WEARABLE     |      3 |   0.4103 | Mixed feelings. The low-volume dive mask is okay, with a few things I would change. Feels like looking through a letterbox compared to my old mask. Wa
+    3 |      1653 | GEN-MASK-03 | WEARABLE     |      4 |   0.4403 | Would buy again. The professional low-volume dive mask has worked well over 21 dives. Anti-fog prep worked first time and the glass never clouded over
+    4 |      1851 | MASK-001    | WEARABLE     |      1 |   0.4451 | Avoid. The low-volume dive mask lasted 17 dives before I gave up on it. Could not keep the view clear, the inside of the glass turns milky after ten m
+    5 |       199 | GEN-MASK-05 | WEARABLE     |      3 |   0.4707 | Does the job. The warm-water low-volume dive mask is okay, with a few things I would change. Water keeps trickling in around the nose pocket. Anti-fog
+(5 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S2'));
+ rank | review_id |    sku     | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |       627 | GEN-WET-04 | WEARABLE     |      1 |   0.3724 | Returned it. The cold-water full-length neoprene wetsuit lasted 11 dives before I gave up on it. A seam started to split at the knee after a handful o
+    2 |      1031 | GEN-WET-01 | WEARABLE     |      2 |   0.3744 | Disappointed. Not impressed with the recreational full-length neoprene wetsuit so far. Thermal protection is excellent; no shivering even on the deep 
+    3 |      1695 | GEN-WET-08 | WEARABLE     |      1 |   0.3788 | Avoid. The lightweight full-length neoprene wetsuit lasted 36 dives before I gave up on it. Way too chilly for anything below 15 degrees, I had to cal
+    4 |      1543 | GEN-WET-10 | WEARABLE     |      1 |   0.3836 | Avoid. The deluxe full-length neoprene wetsuit lasted 27 dives before I gave up on it. Cold water flushes through it and I lost all feeling in my fing
+    5 |      1321 | SUIT-001   | WEARABLE     |      1 |   0.3872 | Avoid. The 3 mm full wetsuit lasted 59 dives before I gave up on it. Not nearly enough insulation for our local winter diving, I was shivering on the 
+(5 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S3'));
+ rank | review_id |     sku     | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+-------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |      2213 | GEN-REG1-01 | LIFE_SUPPORT |      1 |   0.2250 | Avoid. The recreational balanced regulator first stage lasted 31 dives before I gave up on it. Breathing gets hard work below 25 metres. It needed a s
+    2 |       662 | GEN-REG1-10 | LIFE_SUPPORT |      4 |   0.2370 | Would buy again. The deluxe balanced regulator first stage has worked well over 55 dives. Annual service kit is cheap and easy to source. Inhalation e
+    3 |       747 | GEN-REG1-06 | LIFE_SUPPORT |      1 |   0.2719 | Returned it. The compact balanced regulator first stage lasted 15 dives before I gave up on it. Breathing gets hard work below 25 metres. I returned i
+    4 |      1738 | GEN-REG1-01 | LIFE_SUPPORT |      3 |   0.2830 | Does the job. After 51 dives the recreational balanced regulator first stage is fine but not special. Environmentally sealed and it never iced up in c
+    5 |      1643 | GEN-REG1-08 | LIFE_SUPPORT |      3 |   0.2943 | Some pros and cons. After 37 dives the lightweight balanced regulator first stage is fine but not special. No free flow even in 4 degree water. Breath
+(5 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S4'));
+ rank | review_id |      sku      | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+---------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |      1356 | GEN-AICOMP-06 | ELECTRONICS  |      4 |   0.2810 | Would buy again. The compact air-integrated dive computer has worked well over 8 dives. The battery easily lasts a week-long dive trip on one charge. 
+    2 |      1298 | GEN-COMP-01   | ELECTRONICS  |      1 |   0.3396 | Did not work for me. The recreational wrist dive computer lasted 43 dives before I gave up on it. Conditions varied from flat calm to a strong surge o
+    3 |      1297 | GEN-COMP-04   | ELECTRONICS  |      4 |   0.3430 | Would buy again. The cold-water wrist dive computer has worked well over 35 dives. Battery life is outstanding, I charge it maybe once a month. Enrich
+    4 |      1566 | COMP-003      | ELECTRONICS  |      3 |   0.3759 | Does the job. After 46 dives the console dive computer is fine but not special. The battery easily lasts a week-long dive trip on one charge. The ZHL-
+    5 |       474 | GEN-COMP-06   | ELECTRONICS  |      5 |   0.3856 | Exactly what I needed. Used the compact wrist dive computer on 52 dives so far and it has been excellent. The battery easily lasts a week-long dive tr
+(5 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S5'));
+ rank | review_id |      sku      | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+---------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |      1927 | GEN-REG1-03   | LIFE_SUPPORT |      4 |   0.3306 | Solid gear. Used it at Bonne Bay last month and it did the job well. Annual service kit is cheap and easy to source. It free flowed on me in cold wate
+    2 |      1885 | GEN-MASK-06   | WEARABLE     |      4 |   0.3692 | Solid gear. The compact low-volume dive mask has worked well over 26 dives. Fits a narrow face nicely and holds a seal with light strap tension.
+    3 |       344 | GEN-SNORK-07  | WEARABLE     |      4 |   0.3757 | Solid gear. The expedition purge snorkel has worked well over 32 dives. Dry top keeps chop out when I am waiting at the surface. Would recommend.
+    4 |       528 | GEN-BOOT-04   | WEARABLE     |      4 |   0.3800 | Solid gear. Used it at Catalina Island last month and it did the job well. Foot pocket is comfortable even on long dives. Would recommend.
+    5 |       490 | GEN-AICOMP-02 | ELECTRONICS  |      4 |   0.3833 | Solid gear. The travel air-integrated dive computer has worked well over 45 dives. Enriched air setup is simple and it reminds me to check my mix. O-r
+(5 rows)
+
+SELECT * FROM fn_search_reviews((SELECT embedding FROM eval_queries WHERE query_id = 'S6'));
+ rank | review_id |    sku     | product_kind | rating | distance |                                                                      review_text                                                                       
+------+-----------+------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+    1 |      1285 | GEN-FIN-04 | WEARABLE     |      1 |   0.2844 | Avoid. Really unhappy with the cold-water open-heel paddle fins. Painful pressure across the top of my foot, could not wait to take them off.
+    2 |      1823 | FIN-004    | WEARABLE     |      1 |   0.3306 | Avoid. Really unhappy with the compact travel fins. The blade is too soft and I felt like I was kicking without going anywhere. The foot pocket rubs m
+    3 |        68 | GEN-FIN-01 | WEARABLE     |      3 |   0.3899 | Okay for the price. The recreational open-heel paddle fins is okay, with a few things I would change. Gave me blisters on my heels after the first div
+    4 |       776 | GEN-FIN-05 | WEARABLE     |      5 |   0.4138 | Exactly what I needed. Used the warm-water open-heel paddle fins on 23 dives so far and it has been excellent. Great for frog kicking and backing up. 
+    5 |        51 | GEN-FIN-09 | WEARABLE     |      2 |   0.4233 | Has issues. Not impressed with the technical open-heel paddle fins so far. Painful pressure across the top of my foot, could not wait to take them off
+(5 rows)
+

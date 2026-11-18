@@ -1,0 +1,30 @@
+DO $$
+BEGIN
+    IF to_regclass('public.products') IS NULL OR to_regclass('public.order_items') IS NULL THEN
+        RAISE EXCEPTION 'aria_phase2 is not built: run Phase2_Implementation/SQL_Scripts/run_all first';
+    END IF;
+END $$;
+DO
+DROP VIEW IF EXISTS v_product_catalogue CASCADE;
+DROP VIEW
+DROP TABLE IF EXISTS eval_queries, review_embeddings, product_reviews,
+                     wearable_gear, life_support_equipment, dive_electronics, safety_accessory CASCADE;
+DROP TABLE
+DROP FUNCTION IF EXISTS fn_add_product, fn_care_interval_months, fn_care_due_date, fn_describe_product,
+                        fn_check_product_subclass, fn_check_verified_purchase, fn_search_reviews CASCADE;
+psql:00_prereqs.sql:24: NOTICE:  drop cascades to trigger trg_products_have_subclass on table products
+DROP FUNCTION
+ALTER TABLE products DROP COLUMN IF EXISTS product_kind CASCADE,
+                     DROP COLUMN IF EXISTS specs CASCADE;
+ALTER TABLE
+CREATE EXTENSION IF NOT EXISTS vector;
+psql:00_prereqs.sql:28: NOTICE:  extension "vector" already exists, skipping
+CREATE EXTENSION
+SELECT current_database() AS database,
+       split_part(version(), ' on ', 1) AS server,
+       (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS pgvector;
+  database   |                  server                  | pgvector 
+-------------+------------------------------------------+----------
+ aria_phase2 | PostgreSQL 18.6 (Debian 18.6-1.pgdg12+2) | 0.8.7
+(1 row)
+

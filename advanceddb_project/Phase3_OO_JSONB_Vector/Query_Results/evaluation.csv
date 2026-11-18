@@ -1,0 +1,51 @@
+query_id,method,rank,review_id,sku,distance_or_score,judgement,why
+S1,semantic search,1,1167,GEN-MASK-09,0.4073,relevant,mask: fogging (neg)
+S1,semantic search,2,1166,MASK-001,0.4103,relevant,mask: fogging (neg)
+S1,semantic search,3,1653,GEN-MASK-03,0.4403,not relevant,"mask: right topic, opposite sentiment (pos)"
+S1,semantic search,4,1851,MASK-001,0.4451,relevant,mask: fogging (neg)
+S1,semantic search,5,199,GEN-MASK-05,0.4707,not relevant,"mask: right topic, opposite sentiment (pos)"
+S2,semantic search,1,627,GEN-WET-04,0.3724,relevant,wetsuit: warmth (neg)
+S2,semantic search,2,1031,GEN-WET-01,0.3744,not relevant,"wetsuit: right topic, opposite sentiment (pos)"
+S2,semantic search,3,1695,GEN-WET-08,0.3788,relevant,wetsuit: warmth (neg)
+S2,semantic search,4,1543,GEN-WET-10,0.3836,relevant,wetsuit: warmth (neg)
+S2,semantic search,5,1321,SUIT-001,0.3872,relevant,wetsuit: warmth (neg)
+S3,semantic search,1,2213,GEN-REG1-01,0.2250,relevant,reg_first: breathing_effort (neg)
+S3,semantic search,2,662,GEN-REG1-10,0.2370,not relevant,"reg_first: right topic, opposite sentiment (pos)"
+S3,semantic search,3,747,GEN-REG1-06,0.2719,relevant,reg_first: breathing_effort (neg)
+S3,semantic search,4,1738,GEN-REG1-01,0.2830,not relevant,"reg_first: right topic, opposite sentiment (pos)"
+S3,semantic search,5,1643,GEN-REG1-08,0.2943,relevant,reg_first: breathing_effort (neg)
+S4,semantic search + index comparison,1,1356,GEN-AICOMP-06,0.2810,not relevant,"ai_computer: right topic, opposite sentiment (pos)"
+S4,semantic search + index comparison,2,1298,GEN-COMP-01,0.3396,relevant,computer: battery (neg)
+S4,semantic search + index comparison,3,1297,GEN-COMP-04,0.3430,not relevant,"computer: right topic, opposite sentiment (pos)"
+S4,semantic search + index comparison,4,1566,COMP-003,0.3759,not relevant,"console_computer: right topic, opposite sentiment (pos)"
+S4,semantic search + index comparison,5,474,GEN-COMP-06,0.3856,not relevant,"computer: right topic, opposite sentiment (pos)"
+S5,semantic search,1,1927,GEN-REG1-03,0.3306,relevant,reg_first: travel (pos)
+S5,semantic search,2,1885,GEN-MASK-06,0.3692,not relevant,mask: off-topic [seal_fit (pos)]
+S5,semantic search,3,344,GEN-SNORK-07,0.3757,not relevant,snorkel: off-topic [purge_dry (pos)]
+S5,semantic search,4,528,GEN-BOOT-04,0.3800,not relevant,boots: off-topic [foot_comfort (pos)]
+S5,semantic search,5,490,GEN-AICOMP-02,0.3833,not relevant,"ai_computer: off-topic [nitrox_setup (pos), flooding (pos)]"
+S6,semantic search,1,1285,GEN-FIN-04,0.2844,relevant,fins: foot_comfort (neg)
+S6,semantic search,2,1823,FIN-004,0.3306,relevant,fins: foot_comfort (neg)
+S6,semantic search,3,68,GEN-FIN-01,0.3899,relevant,fins: foot_comfort (neg)
+S6,semantic search,4,776,GEN-FIN-05,0.4138,not relevant,"fins: right topic, opposite sentiment (pos)"
+S6,semantic search,5,51,GEN-FIN-09,0.4233,relevant,fins: foot_comfort (neg)
+F1,vector search + relational/JSONB filter,1,532,GEN-REG2-04,0.4970,not relevant,"reg_second: right topic, opposite sentiment (pos)"
+F1,vector search + relational/JSONB filter,2,592,GEN-REG2-04,0.5042,not relevant,"reg_second: right topic, opposite sentiment (pos)"
+F1,vector search + relational/JSONB filter,3,1777,GEN-REG1-05,0.5233,relevant,reg_first: freeflow (neg)
+F1,vector search + relational/JSONB filter,4,1316,GEN-REG1-08,0.5238,not relevant,"reg_first: right topic, opposite sentiment (pos)"
+F1,vector search + relational/JSONB filter,5,766,GEN-REG2-01,0.5276,not relevant,"reg_second: right topic, opposite sentiment (pos)"
+H1,vector only,1,1659,GEN-REG1-02,0.4842,relevant,mentions Whytecliff
+H1,vector only,2,2238,GEN-SMB-05,0.5189,not relevant,does not mention Whytecliff
+H1,vector only,3,1618,GEN-LIGHT-01,0.5238,not relevant,does not mention Whytecliff
+H1,vector only,4,1744,FIN-003,0.5249,not relevant,does not mention Whytecliff
+H1,vector only,5,2390,GEN-SMB-02,0.5269,not relevant,does not mention Whytecliff
+H1,hybrid: full-text + vector (RRF),1,283,GEN-GLOVE-10,0.03031,relevant,mentions Whytecliff
+H1,hybrid: full-text + vector (RRF),2,1659,GEN-REG1-02,0.02830,relevant,mentions Whytecliff
+H1,hybrid: full-text + vector (RRF),3,1969,GEN-GLOVE-04,0.02462,relevant,mentions Whytecliff
+H1,hybrid: full-text + vector (RRF),4,1281,GEN-BOOT-04,0.02349,relevant,mentions Whytecliff
+H1,hybrid: full-text + vector (RRF),5,2155,GEN-REG1-03,0.02347,relevant,mentions Whytecliff
+D1,Part D combined query,1,296,GEN-COMP-01,0.3895,relevant,computer: battery (neg)
+D1,Part D combined query,2,1298,GEN-COMP-01,0.4085,relevant,computer: battery (neg)
+D1,Part D combined query,3,1297,GEN-COMP-04,0.4539,not relevant,"computer: right topic, opposite sentiment (pos)"
+D1,Part D combined query,4,77,GEN-COMP-04,0.4866,not relevant,"computer: right topic, opposite sentiment (pos)"
+D1,Part D combined query,5,858,GEN-COMP-07,0.4910,relevant,computer: battery (neg)

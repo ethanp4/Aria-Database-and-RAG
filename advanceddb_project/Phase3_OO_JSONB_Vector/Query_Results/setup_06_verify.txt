@@ -1,0 +1,45 @@
+SELECT product_kind, count(*) AS products
+FROM products GROUP BY product_kind ORDER BY product_kind;
+ product_kind | products 
+--------------+----------
+ ACCESSORY    |       46
+ ELECTRONICS  |       34
+ LIFE_SUPPORT |       37
+ WEARABLE     |       83
+(4 rows)
+
+DO $$
+DECLARE
+    n BIGINT;
+BEGIN
+    -- every product is in exactly one subclass table (disjoint + complete)
+    SELECT count(*) INTO n FROM products p
+    WHERE (SELECT count(*) FROM (
+              SELECT product_id FROM wearable_gear          WHERE product_id = p.product_id UNION ALL
+              SELECT product_id FROM life_support_equipment WHERE product_id = p.product_id UNION ALL
+              SELECT product_id FROM dive_electronics       WHERE product_id = p.product_id UNION ALL
+              SELECT product_id FROM safety_accessory       WHERE product_id = p.product_id) s) <> 1;
+    IF n > 0 THEN RAISE EXCEPTION 'check 1 failed: % products not in exactly one subclass', n; END IF;
+
+    -- compatible_with points at real SKUs
+    SELECT count(*) INTO n
+    FROM products p, jsonb_to_recordset(p.specs -> 'compatible_with') AS c(sku TEXT)
+    WHERE NOT EXISTS (SELECT 1 FROM products q WHERE q.sku = c.sku);
+    IF n > 0 THEN RAISE EXCEPTION 'check 2 failed: % compatible_with SKUs do not exist', n; END IF;
+
+    -- at least 2,000 searchable reviews, each with exactly one 384-dim embedding
+    SELECT count(*) INTO n FROM product_reviews;
+    IF n < 2000 THEN RAISE EXCEPTION 'check 3 failed: only % reviews', n; END IF;
+    SELECT count(*) INTO n FROM product_reviews r
+    WHERE NOT EXISTS (SELECT 1 FROM review_embeddings e WHERE e.review_id = r.review_id);
+    IF n > 0 THEN RAISE EXCEPTION 'check 4 failed: % reviews without an embedding', n; END IF;
+
+    -- verified reviews are dated after delivery
+    SELECT count(*) INTO n FROM product_reviews r JOIN orders o USING (order_id)
+    WHERE r.created_at < o.delivered_at;
+    IF n > 0 THEN RAISE EXCEPTION 'check 5 failed: % reviews before delivery', n; END IF;
+
+    RAISE NOTICE 'Phase 3 integrity checks passed';
+END $$;
+psql:06_verify.sql:38: NOTICE:  Phase 3 integrity checks passed
+DO
