@@ -1,49 +1,147 @@
-{% load static %}
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Aria{% endblock %} · Aria</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="{% static 'css/aria.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous" defer></script>
     {% block extra_css %}{% endblock %}
-    <title>{% block title %}My Site{% endblock %}</title>
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    {# optional routes: empty string until the app exists #}
+    {% url 'chat:ask' as ask_url %}
+    {% url 'refunds:staff_queue' as refunds_queue_url %}
+    {% url 'analytics:dashboard' as analytics_url %}
+
     {% block site_header %}
-    <header class="border-bottom bg-body">
-        <nav class="container navbar navbar-expand-sm py-3" aria-label="Dashboard navigation">
-            <a class="navbar-brand fw-semibold" href="{% url 'core:home' %}">ARIA Home</a>
-            <div class="navbar-nav ms-sm-auto">
-                <a class="nav-link" href="{% url 'products:browse' %}">View store</a>
+    <header class="aria-topnav">
+        <nav class="aria-topnav__inner" aria-label="Main">
+            <a class="aria-wordmark" href="{% if is_admin_viewer %}{% url 'products:dashboard' %}{% elif is_staff_viewer %}{% url 'orders:staff_list' %}{% else %}{% url 'products:browse' %}{% endif %}">aria</a>
+
+            <ul class="aria-topnav__links">
                 {% if can_shop %}
-                <a class="nav-link" href="{% url 'cart:detail' %}">Cart ({{ cart_count }})</a>
+                    {% for category in nav_categories %}
+                    <li><a href="{% url 'products:browse' %}?category={{ category.pk }}"{% if request.GET.category == category.pk|stringformat:'s' %} aria-current="page"{% endif %}>{{ category.name }}</a></li>
+                    {% endfor %}
+                {% else %}
+                    <li><a href="{% url 'orders:staff_list' %}"{% if current_view == 'orders:staff_list' or current_view == 'orders:staff_detail' %} aria-current="page"{% endif %}>Orders</a></li>
+                    {% if refunds_queue_url %}<li><a href="{{ refunds_queue_url }}"{% if 'refunds:staff' in current_view %} aria-current="page"{% endif %}>Refunds</a></li>{% endif %}
+                    {% if is_admin_viewer %}
+                    <li><a href="{% url 'products:dashboard' %}"{% if current_view == 'products:dashboard' %} aria-current="page"{% endif %}>Products</a></li>
+                    {% if analytics_url %}<li><a href="{{ analytics_url }}"{% if 'analytics:' in current_view %} aria-current="page"{% endif %}>Analytics</a></li>{% endif %}
+                    {% endif %}
                 {% endif %}
+            </ul>
+
+            <div class="aria-topnav__utility">
+                {% if can_shop %}
+                <form class="aria-navsearch" role="search" method="get" action="{% url 'products:browse' %}">
+                    <img src="{% static 'img/icons/search.svg' %}" width="20" height="20" alt="">
+                    <label class="visually-hidden" for="nav-search">Search gear</label>
+                    <input id="nav-search" type="search" name="q" placeholder="Search gear" value="{{ request.GET.q|default:'' }}">
+                </form>
+                {% endif %}
+
+                <div class="dropdown">
+                    <button class="aria-iconbtn" type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                            aria-label="{% if username %}Account menu for {{ username }}{% else %}Account{% endif %}">
+                        <img src="{% static 'img/icons/user-round.svg' %}" width="24" height="24" alt="">
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% if username %}
+                            <li><span class="dropdown-item-text small text-body-secondary">Signed in as {{ username }}</span></li>
+                            {% if can_shop %}<li><a class="dropdown-item" href="{% url 'orders:history' %}">My orders</a></li>{% endif %}
+                            <li><a class="dropdown-item" href="{% url 'accounts:address_list' %}">Addresses</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'accounts:logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item">Log out</button>
+                                </form>
+                            </li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'accounts:login' %}">Sign in</a></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:register' %}">Create account</a></li>
+                            <li><a class="dropdown-item" href="{% url 'orders:lookup' %}">Find my order</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if can_shop %}
+                <a class="aria-iconbtn" href="{% url 'cart:detail' %}" aria-label="Cart ({{ cart_count }})">
+                    <img src="{% static 'img/icons/shopping-bag.svg' %}" width="24" height="24" alt="">
+                    {% if cart_count %}<span class="count" aria-hidden="true">{{ cart_count }}</span>{% endif %}
+                </a>
+                {% endif %}
+
+                <button class="aria-iconbtn aria-menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#aria-mobile-menu"
+                        aria-controls="aria-mobile-menu" aria-expanded="false" aria-label="Menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
             </div>
-
-            {% if username %}
-                <div class="navbar-nav ms-sm-3">
-                    {% comment %} <a class="nav-link" href="{% url 'accounts:account' %}">My Account</a> {% endcomment %}
-                    {% if can_shop %}<a class="nav-link" href="{% url 'orders:history' %}">My orders</a>{% endif %}
-                    {% if is_staff_viewer %}<a class="nav-link" href="{% url 'orders:staff_list' %}">Orders</a>{% endif %}
-                    <a class="nav-link" href="{% url 'accounts:address_list' %}">Addresses</a>
-                    <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" class="nav-link btn btn-link">Log Out</button>
-                    </form>
-                </div>
-            {% else %}
-                <div class="navbar-nav ms-sm-3">
-                    <a class="nav-link" href="{% url 'orders:lookup' %}">Find my order</a>
-                    <a class="nav-link" href="{% url 'accounts:login' %}">Log In</a>
-                    <a class="nav-link" href="{% url 'accounts:register' %}">Register</a>
-                </div>
-            {% endif %}
-
         </nav>
+        <div class="collapse" id="aria-mobile-menu">
+            <nav class="aria-mobile-menu" aria-label="Mobile">
+                {% if can_shop %}
+                    <form class="aria-searchfield mb-2" role="search" method="get" action="{% url 'products:browse' %}">
+                        <div class="flex-grow-1">
+                            <label for="nav-search-mobile">Search gear</label>
+                            <input id="nav-search-mobile" type="search" name="q" placeholder="Search products or categories">
+                        </div>
+                        <button type="submit">Search</button>
+                    </form>
+                    <a href="{% url 'products:browse' %}">All gear</a>
+                    {% for category in nav_categories %}<a href="{% url 'products:browse' %}?category={{ category.pk }}">{{ category.name }}</a>{% endfor %}
+                {% else %}
+                    <a href="{% url 'orders:staff_list' %}">Orders</a>
+                    {% if refunds_queue_url %}<a href="{{ refunds_queue_url }}">Refunds</a>{% endif %}
+                    {% if is_admin_viewer %}
+                        <a href="{% url 'products:dashboard' %}">Products</a>
+                        {% if analytics_url %}<a href="{{ analytics_url }}">Analytics</a>{% endif %}
+                    {% endif %}
+                {% endif %}
+            </nav>
+        </div>
     </header>
     {% endblock %}
 
-    {% block content %}{% endblock %}
+    {% block messages %}
+    {% if messages %}
+    <div class="aria-page pb-0" role="status" aria-live="polite">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endblock %}
+
+    <main id="main" tabindex="-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block site_footer %}
+    <footer class="aria-footer">
+        <p>Canada &amp; US · All prices CAD</p>
+        <p>Synthetic demo data · Payments run on a test gateway</p>
+    </footer>
+    {% endblock %}
+
+    {% block ask_aria %}
+    {% if ask_url %}
+    <a class="ask-aria-fab" href="{{ ask_url }}">
+        <img src="{% static 'img/icons/message-circle.svg' %}" width="20" height="20" alt="">
+        Ask Aria
+    </a>
+    {% endif %}
+    {% endblock %}
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

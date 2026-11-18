@@ -59,6 +59,15 @@ POLICY = {
     'orders:staff_list': STAFF,
     'orders:staff_detail': STAFF,
     'orders:staff_mark_shipped': STAFF,
+    # UI prototype stubs (GET only, no writes). Customer refund request is customer-only:
+    # staff/admin get 403, another customer's order 404.
+    'refunds:request': LOGIN,
+    'refunds:staff_queue': STAFF,
+    'refunds:staff_review': STAFF,
+    'analytics:dashboard': ADMIN,
+    'analytics:data': ADMIN,
+    # chatbot: guests, customers and staff may ask questions (CLAUDE.md roles)
+    'chat:ask': PUBLIC,
 }
 
 # views the spec says are POST only; they are probed with POST
@@ -136,6 +145,7 @@ class UrlGuardTests(TestCase):
             'orders:guest_detail': [self.guest_order.pk, guest_order_key(self.guest_order)],
             'orders:staff_detail': [self.confirmed.pk],
             'orders:staff_mark_shipped': [self.confirmed.pk],
+            'refunds:request': [self.customer_order.pk],
         }.get(name, [])
         return reverse(name, args=args)
 

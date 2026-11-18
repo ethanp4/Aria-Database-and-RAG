@@ -54,7 +54,10 @@ INSTALLED_APPS = [
     'core',
     'orders',
     'payments',
-    'products'
+    'products',
+    'refunds',
+    'analytics',
+    'chat',
 ]
 
 #translate message tag names to bootstrap classes
@@ -93,6 +96,7 @@ TEMPLATES = [
                 "accounts.context_preprocessors.current_profile",
                 "accounts.context_preprocessors.account_info",
                 "cart.context_processors.cart_info",
+                "core.context_processors.site_nav",
             ],
         },
     },
