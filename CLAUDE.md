@@ -53,7 +53,9 @@ ALL DATA IS SYNTHETIC. Never add real personal data to the repo, fixtures, or lo
   `MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)/aria_project:/app" -e DB_HOST=host.docker.internal django python manage.py test`
 - Migrations: `python manage.py makemigrations` / `python manage.py migrate`
 - Sample data: `python manage.py create_sample_data --password <pw>`
-- Lint/format: none configured yet
+- Lint (repo root): `ruff check .` (config `ruff.toml`; dev tools in `requirements-dev.txt`).
+  No formatter enforced. CI (`.github/workflows/ci.yml`) runs lint, tests with coverage,
+  pip-audit/bandit and a Docker build; see `docs/ci-cd.md`.
 
 ## Database
 - Django models + migrations are the source of truth. Schema changes go through
