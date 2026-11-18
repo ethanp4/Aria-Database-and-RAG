@@ -152,3 +152,12 @@
 @media (max-width: 575.98px) {
   .sf-assistant { padding: 20px 16px; }
 }
+
+/* Ask Aria live chat */
+.sf-ask-status:empty { display: none; }
+.sf-composer textarea { resize: vertical; }
+.sf-composer .btn:disabled { cursor: progress; }
+.sf-bubble[aria-busy="true"] .sf-bubble__text { color: var(--color-text-secondary); }
+.sf-bubble__text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sf-signin-prompt { box-shadow: none; }
+.sf-signin-prompt .btn { align-self: flex-start; }

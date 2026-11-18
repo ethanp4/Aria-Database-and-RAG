@@ -9,53 +9,29 @@
 {% block ask_aria %}{% endblock %}
 
 {% block content %}
-{# UI stub: every message below is fixed sample content. Nothing here reads or changes orders or refunds. #}
+{# Questions go to chatbot:stream from static/js/ask-aria.js. Aria explains only; it never changes orders or refunds. #}
 {% if is_staff_viewer %}{% url 'orders:staff_list' as help_url %}{% url 'orders:staff_list' as close_url %}
 {% elif username %}{% url 'orders:history' as help_url %}{% url 'products:browse' as close_url %}
 {% else %}{% url 'orders:lookup' as help_url %}{% url 'products:browse' as close_url %}{% endif %}
 <div class="aria-page">
     <header class="page-heading">
         <h1>Ask Aria</h1>
-        <p>An AI assistant that explains our policies and your own orders. People confirm any changes.</p>
+        <p>An AI assistant that explains our policies. People confirm any changes.</p>
     </header>
-
-    <div class="prototype-notice" role="note">
-        <span class="sf-icon20"><img src="{% static 'img/icons/info.svg' %}" width="19" height="19" alt=""></span>
-        <p class="m-0"><strong>Preview:</strong> Ask Aria isn't connected yet; these are sample answers. Nothing you see here reads or changes a real order.</p>
-    </div>
-
-    <nav aria-label="Sample conversations">
-        <ul class="chip-row list-unstyled m-0">
-            {% for key, label in states %}
-            <li><a class="chip{% if key == state %} is-active{% endif %}" href="?state={{ key }}"{% if key == state %} aria-current="true"{% endif %}>{{ label }}</a></li>
-            {% endfor %}
-        </ul>
-    </nav>
 
     <div class="aria-columns aria-columns--main-aside">
         <div class="sf-stack aria-hide-mobile">
-            <section class="aria-card" aria-labelledby="sample-order-heading">
-                <span class="status-badge status-badge--neutral align-self-start">Sample data</span>
-                <h2 id="sample-order-heading" class="h3">AR-20418 · Order confirmed</h2>
-                <div class="sf-order-line">
-                    <div class="sf-thumb" aria-hidden="true">P</div>
-                    <div>
-                        <p class="fw-semibold">Pelagic P1 Dive Computer</p>
-                        <p class="sf-muted">Navy · Standard strap · Qty 1</p>
-                        <p class="fw-semibold">$529.95 CAD</p>
-                    </div>
-                </div>
-                <div class="sf-order-facts">
-                    <p>Total · $612.40 CAD</p>
-                    <p>Payment · Visa •••• 4242</p>
-                </div>
-                <a class="text-action" href="{{ help_url }}">Request help with your order</a>
-            </section>
-
             <section class="aria-card" aria-labelledby="scope-heading">
                 <h2 id="scope-heading" class="h3">What Aria can do</h2>
-                <p class="sf-muted">Explain store policies and cite the source it used. Look up only your own orders. It can't place, cancel or refund anything; a person confirms every change.</p>
+                <p class="sf-muted">Answer questions about store policies (returns, shipping, warranty, privacy) and cite the document it used. If it can't find a source, it says so instead of guessing.</p>
+                <p class="sf-muted">It can't place, cancel or refund anything. A person confirms every change.</p>
                 <span class="status-badge status-badge--success align-self-start"><img src="{% static 'img/icons/circle-check.svg' %}" width="22" height="24" alt="">Explains and informs only</span>
+            </section>
+
+            <section class="aria-card" aria-labelledby="human-heading">
+                <h2 id="human-heading" class="h3">Need a person?</h2>
+                <p class="sf-muted">{% if is_staff_viewer %}Order changes and refund decisions are made from the staff screens.{% else %}Our team handles cancellations, refunds and anything Aria can't answer.{% endif %}</p>
+                <a class="text-action" href="{{ help_url }}">{% if is_staff_viewer %}Staff order list{% elif username %}Go to my orders{% else %}Find my order{% endif %}</a>
             </section>
         </div>
 
@@ -68,7 +44,7 @@
                     </a>
                 </div>
                 <h2 id="assistant-heading">Ask Aria · AI assistant · can explain, can't take actions</h2>
-                <p>Policies and your own records only.</p>
+                <p>Answers come from Aria's policy documents{% if is_staff_viewer %} and staff guides{% endif %}.</p>
             </div>
 
             <div class="alert sf-alert-info mb-0">
@@ -76,64 +52,44 @@
                 <p>Aria explains. People confirm changes to orders and refunds.</p>
             </div>
 
-            <ol class="sf-conversation" aria-label="Sample conversation">
-                {% if state == 'no-source' %}
-                <li class="sf-bubble sf-bubble--user">
-                    <p class="sf-bubble__who">You</p>
-                    <p class="sf-bubble__text">Does Aria cover damage from a custom modification?</p>
-                </li>
-                <li class="sf-bubble sf-bubble--refusal">
-                    <p class="sf-bubble__who">Aria · AI assistant</p>
-                    <p class="sf-bubble__text">I couldn't find this in Aria's policies, so I won't guess. Would you like to talk to a person?</p>
-                    <a class="btn btn-primary" href="{{ help_url }}">Contact customer service</a>
-                </li>
-                {% elif state == 'action-boundary' %}
-                <li class="sf-bubble sf-bubble--user">
-                    <p class="sf-bubble__who">You</p>
-                    <p class="sf-bubble__text">Cancel my order</p>
-                </li>
+            {% if username %}
+            <ol class="sf-conversation" id="ask-conversation" aria-label="Conversation" aria-live="polite">
                 <li class="sf-bubble sf-bubble--assistant">
                     <p class="sf-bubble__who">Aria · AI assistant</p>
-                    <p class="sf-bubble__text">I can't cancel, refund or change orders, but I can explain how. A team member must confirm any cancellation.</p>
-                    <a class="text-action" href="{{ help_url }}">{% if is_staff_viewer %}Staff order list{% elif username %}Your orders · My orders{% else %}Find your order{% endif %}</a>
-                    <p class="sf-bubble__note">Open your own order to contact customer service. No cancellation has been made.</p>
+                    <p class="sf-bubble__text">Hi {{ username }}. Ask me about returns, shipping, warranty or privacy, and I'll point you to the policy I used.</p>
                 </li>
-                {% else %}
-                <li class="sf-bubble sf-bubble--user">
-                    <p class="sf-bubble__who">You</p>
-                    <p class="sf-bubble__text">Can I return my dive computer if it is unopened?</p>
-                </li>
-                <li class="sf-bubble sf-bubble--assistant">
-                    <p class="sf-bubble__who">Aria · AI assistant</p>
-                    <p class="sf-bubble__text">Unopened items can be returned within 30 days of delivery.</p>
-                    <p class="sf-bubble__text">You can request a refund from your order history. A staff member checks eligibility and confirms the decision.</p>
-                    <div>
-                        <p class="visually-hidden">Sources:</p>
-                        <ul class="sf-sources" aria-label="Cited sources">
-                            <li class="sf-source">Returns Policy §2</li>
-                            <li class="sf-source">Sample order AR-20418</li>
-                        </ul>
-                    </div>
-                    <p class="sf-bubble__note">Based on the cited policy and your own order. I have not started a refund.</p>
-                </li>
-                {% endif %}
             </ol>
 
-            <div class="sf-composer">
+            <form class="sf-composer" id="ask-form" method="post" action="{% url 'chatbot:stream' %}"
+                  data-stream-url="{% url 'chatbot:stream' %}" data-help-url="{{ help_url }}"
+                  data-help-label="{% if is_staff_viewer %}Staff order list{% else %}Contact customer service{% endif %}"
+                  novalidate>
+                {% csrf_token %}
                 <div class="aria-field">
                     <div class="aria-field__body">
                         <label for="ask-message">Message Ask Aria</label>
-                        <input id="ask-message" type="text" placeholder="Ask about a policy or your order" disabled aria-describedby="ask-disabled-note">
+                        <textarea id="ask-message" name="message" rows="2" maxlength="{{ max_question_length }}"
+                                  placeholder="Ask about a policy" required aria-describedby="ask-status"></textarea>
                     </div>
                 </div>
-                <button class="btn btn-primary" type="button" disabled aria-describedby="ask-disabled-note">
-                    {# send.svg is drawn white for the enabled button; it's left out while sending is disabled #}
-                    Send message
-                </button>
-                <p id="ask-disabled-note">Sending is turned off in this preview.</p>
+                <button class="btn btn-primary" type="submit" id="ask-send">Send message</button>
+                <p id="ask-status" class="sf-ask-status" role="status"></p>
+                <noscript><p>Ask Aria needs JavaScript to send messages.</p></noscript>
                 <p>Chats are kept for 90 days, then anonymized.</p>
+            </form>
+            {% else %}
+            <div class="aria-card sf-signin-prompt">
+                <h3 class="h4 m-0">Sign in to ask Aria</h3>
+                <p class="sf-muted">Ask Aria is available to signed-in customers. Guests can still find an order with the order number and email.</p>
+                <a class="btn btn-primary" href="{% url 'accounts:login' %}">Sign in</a>
+                <a class="text-action" href="{% url 'accounts:register' %}">Create account</a>
             </div>
+            {% endif %}
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if username %}<script src="{% static 'js/ask-aria.js' %}" defer></script>{% endif %}
 {% endblock %}

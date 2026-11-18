@@ -1,28 +1,18 @@
-"""Ask Aria chat screen from the Figma prototype, as a UI stub.
+"""Ask Aria page: the chat UI for the RAG chatbot (chatbot:stream).
 
-The RAG chatbot is not built yet. This page only renders the designed states
-(?state=answer|no-source|action-boundary) with fixed sample content from the
-template. It has no POST handler, writes nothing, and never reads orders or
-refunds: CLAUDE.md invariants 5 and 6 (inform only, refuse without a source).
+This view only renders the page. Questions are posted from the browser to
+chatbot:stream, which requires a signed-in account, scopes sources by role and
+refuses when no source matches (CLAUDE.md invariants 5 and 6). Nothing here reads
+or changes orders or refunds; guests are asked to sign in.
 """
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
-# state key -> label for the sample-conversation switcher
-STATES = {
-    'answer': 'Policy answer',
-    'no-source': 'No source found',
-    'action-boundary': 'Asked to take an action',
-}
-DEFAULT_STATE = 'answer'
+from chatbot.views import MAX_QUESTION_LENGTH
 
 
 @require_GET
 def ask_view(request):
-    state = request.GET.get('state', DEFAULT_STATE)
-    if state not in STATES:
-        state = DEFAULT_STATE
     return render(request, 'chat/ask.html', {
-        'state': state,
-        'states': STATES.items(),
+        'max_question_length': MAX_QUESTION_LENGTH,
     })
