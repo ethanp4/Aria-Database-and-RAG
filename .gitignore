@@ -17,3 +17,6 @@ venv
 # coverage output
 .coverage
 htmlcov/
+# Phase 3: local venv and model cache
+.venv/
+advanceddb_project/**/model_cache/

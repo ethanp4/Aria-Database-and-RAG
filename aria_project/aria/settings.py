@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'refunds',
     'analytics',
     'chat',
+    'chatbot',
 ]
 
 #translate message tag names to bootstrap classes
@@ -118,6 +119,14 @@ DATABASES = {
         'PORT': env('DB_PORT', default='5433'),
     }
 }
+
+OLLAMA_BASE_URL = env('OLLAMA_BASE_URL', default='http://ollama:11434').rstrip('/')
+OLLAMA_CHAT_MODEL = env('OLLAMA_CHAT_MODEL', default='qwen3:4b-instruct')
+OLLAMA_EMBED_MODEL = env('OLLAMA_EMBED_MODEL', default='all-minilm:l6-v2')
+ARIA_RAG_TOP_K = env.int('ARIA_RAG_TOP_K', default=5)
+# chunks below this cosine similarity are dropped; if none remain the chatbot refuses (invariant 6).
+# Calibrated on all-minilm:l6-v2: in-scope questions scored >= 0.40, off-topic ones <= 0.32.
+ARIA_RAG_MIN_SIMILARITY = env.float('ARIA_RAG_MIN_SIMILARITY', default=0.35)
 
 
 # Password validation

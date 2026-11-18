@@ -26,5 +26,6 @@ urlpatterns = [
     path('', include('refunds.urls')),
     path('', include('analytics.urls')),
     path('', include('chat.urls')),
+    path('api/chat/', include('chatbot.urls')),
     path('admin/', admin.site.urls),
 ]

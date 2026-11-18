@@ -1,0 +1,124 @@
+SET hnsw.iterative_scan = relaxed_order;
+SET
+SELECT row_number() OVER (ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'D1'))  AS rank,
+       v.sku, v.name,
+       v.kind_detail,
+       v.specs #>> '{features,max_o2_pct}'                AS max_o2_pct,
+       r.rating,
+       r.details #>> '{dive_context,site}'                AS dive_site,
+       r.details #>> '{dive_context,water_temp_c}'        AS water_c,
+       round((e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'D1'))::numeric, 4)           AS distance,
+       left(r.body, 120)                                  AS what_the_diver_said
+FROM review_embeddings e
+JOIN product_reviews r     ON r.review_id = e.review_id
+JOIN v_product_catalogue v ON v.product_id = r.product_id
+WHERE v.product_kind = 'ELECTRONICS'                              -- hierarchy: subclass
+  AND v.warranty_months >= 24                                     -- hierarchy: subclass-only attribute
+  AND v.specs @> '{"features": {"nitrox": true}}'                 -- JSONB containment
+ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'D1')                                      -- vector similarity
+LIMIT 5;
+ rank |     sku     |               name               |                     kind_detail                      | max_o2_pct | rating |  dive_site   | water_c | distance |                                                   what_the_diver_said                                                    
+------+-------------+----------------------------------+------------------------------------------------------+------------+--------+--------------+---------+----------+--------------------------------------------------------------------------------------------------------------------------
+    1 | GEN-COMP-01 | Recreational Wrist dive computer | user replaceable battery, 200 h, 24-month warranty   | 40         |      1 | Porteau Cove | 8       |   0.3895 | Really unhappy with the recreational wrist dive computer. I needed the manual just to switch modes. Charge drains incred
+    2 | GEN-COMP-01 | Recreational Wrist dive computer | user replaceable battery, 200 h, 24-month warranty   | 40         |      1 | Ogden Point  | 10      |   0.4085 | The recreational wrist dive computer lasted 43 dives before I gave up on it. Conditions varied from flat calm to a stron
+    3 | GEN-COMP-04 | Cold-water Wrist dive computer   | rechargeable li ion battery, 40 h, 24-month warranty | 40         |      4 | Key Largo    | 29      |   0.4539 | The cold-water wrist dive computer has worked well over 35 dives. Battery life is outstanding, I charge it maybe once a 
+    4 | GEN-COMP-04 | Cold-water Wrist dive computer   | rechargeable li ion battery, 40 h, 24-month warranty | 40         |      5 | Ogden Point  | 9       |   0.4866 | I have had the cold-water wrist dive computer for a season now and I am really impressed. The battery easily lasts a wee
+    5 | GEN-COMP-07 | Expedition Wrist dive computer   | rechargeable li ion battery, 40 h, 36-month warranty | 40         |      1 | Porteau Cove | 7       |   0.4910 | Had a bad experience with this at Porteau Cove. Charge drains incredibly fast, especially in cold water. Save your money
+(5 rows)
+
+SELECT v.sku, v.name, v.kind_detail, v.unit_price,
+       (SELECT count(*) FROM product_reviews r WHERE r.product_id = v.product_id) AS reviews
+FROM v_product_catalogue v
+WHERE v.product_kind = 'ELECTRONICS'
+  AND v.warranty_months >= 24
+  AND v.specs @> '{"features": {"nitrox": true}}'
+ORDER BY v.unit_price;
+      sku      |                   name                    |                     kind_detail                      | unit_price | reviews 
+---------------+-------------------------------------------+------------------------------------------------------+------------+---------
+ COMP-001      | Wrist dive computer                       | rechargeable li ion battery, 60 h, 24-month warranty |     389.00 |      11
+ GEN-COMP-01   | Recreational Wrist dive computer          | user replaceable battery, 200 h, 24-month warranty   |     389.00 |      13
+ GEN-COMP-02   | Travel Wrist dive computer                | rechargeable li ion battery, 80 h, 24-month warranty |     398.73 |       7
+ GEN-COMP-03   | Professional Wrist dive computer          | rechargeable li ion battery, 50 h, 36-month warranty |     408.45 |      12
+ GEN-COMP-04   | Cold-water Wrist dive computer            | rechargeable li ion battery, 40 h, 24-month warranty |     418.18 |      13
+ GEN-COMP-05   | Warm-water Wrist dive computer            | rechargeable li ion battery, 60 h, 24-month warranty |     427.90 |       8
+ GEN-COMP-07   | Expedition Wrist dive computer            | rechargeable li ion battery, 40 h, 36-month warranty |     447.35 |       9
+ GEN-COMP-09   | Technical Wrist dive computer             | rechargeable li ion battery, 40 h, 36-month warranty |     466.80 |      12
+ GEN-COMP-10   | Deluxe Wrist dive computer                | rechargeable li ion battery, 40 h, 24-month warranty |     476.53 |       8
+ COMP-002      | Air-integrated dive computer              | rechargeable li ion battery, 40 h, 24-month warranty |     849.00 |      15
+ GEN-AICOMP-01 | Recreational Air-integrated dive computer | user replaceable battery, 300 h, 24-month warranty   |     849.00 |      10
+ GEN-AICOMP-02 | Travel Air-integrated dive computer       | rechargeable li ion battery, 30 h, 24-month warranty |     870.23 |       9
+ GEN-AICOMP-03 | Professional Air-integrated dive computer | rechargeable li ion battery, 50 h, 36-month warranty |     891.45 |      10
+ GEN-AICOMP-04 | Cold-water Air-integrated dive computer   | rechargeable li ion battery, 30 h, 24-month warranty |     912.68 |       4
+ GEN-AICOMP-05 | Warm-water Air-integrated dive computer   | rechargeable li ion battery, 40 h, 24-month warranty |     933.90 |       5
+ GEN-AICOMP-07 | Expedition Air-integrated dive computer   | rechargeable li ion battery, 80 h, 36-month warranty |     976.35 |      13
+ GEN-AICOMP-09 | Technical Air-integrated dive computer    | rechargeable li ion battery, 40 h, 36-month warranty |    1018.80 |       8
+ GEN-AICOMP-10 | Deluxe Air-integrated dive computer       | rechargeable li ion battery, 40 h, 24-month warranty |    1040.03 |      15
+(18 rows)
+
+EXPLAIN (ANALYZE, COSTS OFF)
+SELECT r.review_id
+FROM review_embeddings e
+JOIN product_reviews r     ON r.review_id = e.review_id
+JOIN v_product_catalogue v ON v.product_id = r.product_id
+WHERE v.product_kind = 'ELECTRONICS'
+  AND v.warranty_months >= 24
+  AND v.specs @> '{"features": {"nitrox": true}}'
+ORDER BY e.embedding <=> (SELECT embedding FROM eval_queries WHERE query_id = 'D1')
+LIMIT 5;
+                                                                        QUERY PLAN                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual time=0.556..0.559 rows=5.00 loops=1)
+   Buffers: shared hit=771
+   InitPlan 1
+     ->  Index Scan using eval_queries_pkey on eval_queries (actual time=0.006..0.007 rows=1.00 loops=1)
+           Index Cond: ((query_id)::text = 'D1'::text)
+           Index Searches: 1
+           Buffers: shared hit=2
+   ->  Sort (actual time=0.556..0.558 rows=5.00 loops=1)
+         Sort Key: ((e.embedding <=> (InitPlan 1).col1))
+         Sort Method: top-N heapsort  Memory: 25kB
+         Buffers: shared hit=771
+         ->  Nested Loop (actual time=0.081..0.533 rows=182.00 loops=1)
+               Buffers: shared hit=771
+               ->  Nested Loop (actual time=0.064..0.218 rows=182.00 loops=1)
+                     Buffers: shared hit=223
+                     ->  Hash Join (actual time=0.057..0.066 rows=18.00 loops=1)
+                           Hash Cond: (de.product_id = p.product_id)
+                           Buffers: shared hit=10
+                           ->  Seq Scan on dive_electronics de (actual time=0.006..0.010 rows=22.00 loops=1)
+                                 Filter: (warranty_months >= 24)
+                                 Rows Removed by Filter: 12
+                                 Buffers: shared hit=1
+                           ->  Hash (actual time=0.042..0.043 rows=20.00 loops=1)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=9
+                                 ->  Bitmap Heap Scan on products p (actual time=0.026..0.039 rows=20.00 loops=1)
+                                       Recheck Cond: (((product_kind)::text = 'ELECTRONICS'::text) AND (specs @> '{"features": {"nitrox": true}}'::jsonb))
+                                       Heap Blocks: exact=4
+                                       Buffers: shared hit=9
+                                       ->  BitmapAnd (actual time=0.019..0.020 rows=0.00 loops=1)
+                                             Buffers: shared hit=5
+                                             ->  Bitmap Index Scan on products_kind_idx (actual time=0.007..0.007 rows=35.00 loops=1)
+                                                   Index Cond: ((product_kind)::text = 'ELECTRONICS'::text)
+                                                   Index Searches: 1
+                                                   Buffers: shared hit=1
+                                             ->  Bitmap Index Scan on products_specs_gin (actual time=0.011..0.011 rows=22.00 loops=1)
+                                                   Index Cond: (specs @> '{"features": {"nitrox": true}}'::jsonb)
+                                                   Index Searches: 1
+                                                   Buffers: shared hit=4
+                     ->  Index Scan using reviews_product_idx on product_reviews r (actual time=0.002..0.007 rows=10.11 loops=18)
+                           Index Cond: (product_id = de.product_id)
+                           Index Searches: 18
+                           Buffers: shared hit=213
+               ->  Index Scan using review_embeddings_pkey on review_embeddings e (actual time=0.001..0.001 rows=1.00 loops=182)
+                     Index Cond: (review_id = r.review_id)
+                     Index Searches: 182
+                     Buffers: shared hit=546
+ Planning:
+   Buffers: shared hit=28
+ Planning Time: 0.639 ms
+ Execution Time: 0.615 ms
+(51 rows)
+
+RESET hnsw.iterative_scan;
+RESET

@@ -1,0 +1,101 @@
+---
+title: Aria Phase 3 - Product hierarchy and reviews (UML class diagram)
+---
+classDiagram
+    direction TB
+
+    class Category {
+        +category_id : bigint
+        +name : varchar
+        +description : text
+    }
+
+    class Product {
+        <<abstract>>
+        +product_id : bigint
+        +sku : varchar
+        +name : varchar
+        +unit_price : numeric
+        +stock_quantity : int
+        +is_active : boolean
+        +product_kind : varchar
+        +specs : jsonb
+        +describe() text
+        +careIntervalMonths() int
+        +careDueDate(purchasedOn : date) date
+        +create(kind, sku, attrs)$ bigint
+    }
+
+    class WearableGear {
+        +material : varchar
+        +thickness_mm : numeric [0..1]
+        +fit_type : varchar
+        +describe() text
+        +careIntervalMonths() int
+    }
+
+    class LifeSupportEquipment {
+        +service_interval_months : smallint
+        +max_depth_m : smallint
+        +cold_water_rated : boolean
+        +describe() text
+        +careIntervalMonths() int
+    }
+
+    class DiveElectronics {
+        +battery_type : varchar
+        +battery_life_h : smallint
+        +warranty_months : smallint
+        +describe() text
+        +careIntervalMonths() int
+    }
+
+    class SafetyAccessory {
+        +visibility_rating : smallint
+        +corrosion_resistant : boolean
+        +describe() text
+        +careIntervalMonths() int
+    }
+
+    class ProductReview {
+        +review_id : bigint
+        +rating : smallint
+        +title : varchar
+        +body : text
+        +details : jsonb
+        +helpful_votes : int
+        +created_at : timestamptz
+        +isVerifiedPurchase() boolean
+    }
+
+    class ReviewEmbedding {
+        +review_id : bigint
+        +model : varchar
+        +embedding : vector 384-d
+        +distanceTo(query : vector) float
+    }
+
+    class Account {
+        +account_id : bigint
+        +username : varchar
+        +account_type : varchar
+    }
+
+    class Order {
+        +order_id : bigint
+        +status : varchar
+        +delivered_at : timestamptz
+    }
+
+    Product <|-- WearableGear
+    Product <|-- LifeSupportEquipment
+    Product <|-- DiveElectronics
+    Product <|-- SafetyAccessory
+
+    Category "0..1" o-- "0..*" Product : groups
+    Product "1" *-- "0..*" ProductReview : has
+    ProductReview "1" *-- "1" ReviewEmbedding : represented by
+    Account "1" --> "0..*" ProductReview : writes
+    Order "0..1" <-- "0..*" ProductReview : verified by
+
+    note for Product "Class table inheritance {disjoint, complete}<br/>product_kind = discriminator<br/>operations = v_product_catalogue + fn_* functions"

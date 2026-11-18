@@ -29,6 +29,7 @@ LOGIN = 'login'            # any logged-in account
 STAFF = 'staff'            # staff + admin
 ADMIN = 'admin'            # admin only
 ANY_POST = 'any_post'      # logout: not role gated
+API_LOGIN = 'api_login'    # JSON API for any logged-in account: anonymous -> 401, no redirect
 
 POLICY = {
     'core:home': PUBLIC,
@@ -68,11 +69,13 @@ POLICY = {
     'analytics:data': ADMIN,
     # chatbot: guests, customers and staff may ask questions (CLAUDE.md roles)
     'chat:ask': PUBLIC,
+    # RAG chatbot stream: any signed-in role; sources are role-scoped inside the view
+    'chatbot:stream': API_LOGIN,
 }
 
 # views the spec says are POST only; they are probed with POST
 POST_ONLY = {'accounts:logout', 'accounts:address_delete', 'cart:add', 'cart:update',
-             'orders:staff_mark_shipped'}
+             'orders:staff_mark_shipped', 'chatbot:stream'}
 
 LOGIN_URL = reverse('accounts:login')
 
@@ -184,7 +187,7 @@ class UrlGuardTests(TestCase):
         roles = {'anonymous': None, 'customer': self.customer, 'staff': self.staff,
                  'admin': self.admin}
         expect = {
-            # role -> 'login' | 'forbid' | 'allow'
+            # role -> 'login' | 'unauthorized' | 'forbid' | 'allow'
             PUBLIC: {'anonymous': 'allow', 'customer': 'allow'},
             STOREFRONT: {'anonymous': 'allow', 'customer': 'allow', 'staff': 'forbid',
                          'admin': 'forbid'},
@@ -192,6 +195,8 @@ class UrlGuardTests(TestCase):
             STAFF: {'anonymous': 'login', 'customer': 'forbid', 'staff': 'allow', 'admin': 'allow'},
             ADMIN: {'anonymous': 'login', 'customer': 'forbid', 'staff': 'forbid', 'admin': 'allow'},
             ANY_POST: {},
+            API_LOGIN: {'anonymous': 'unauthorized', 'customer': 'allow', 'staff': 'allow',
+                        'admin': 'allow'},
         }
         for name in all_url_names():
             for role, outcome in expect[POLICY.get(name, PUBLIC)].items():
@@ -200,6 +205,8 @@ class UrlGuardTests(TestCase):
                     label = f'{name} as {role} -> {r.status_code}'
                     if outcome == 'login':
                         self.assert_login_redirect(r, label)
+                    elif outcome == 'unauthorized':
+                        self.assertEqual(r.status_code, 401, label)
                     elif outcome == 'forbid':
                         self.assertEqual(r.status_code, 403, label)
                     else:
