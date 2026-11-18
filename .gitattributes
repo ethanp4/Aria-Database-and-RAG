@@ -1,2 +1,5 @@
 # shell scripts must keep LF endings or bash fails on Windows checkouts
 *.sh text eol=lf
+# Phase 3 generated data: byte-exact so generate_dataset.py --check works on every checkout
+advanceddb_project/Phase3_OO_JSONB_Vector/**/*.csv text eol=lf
+advanceddb_project/Phase3_OO_JSONB_Vector/SQL_Scripts/02_product_seed.sql text eol=lf
