@@ -1,0 +1,72 @@
+---
+title: Aria Phase 3 - How review text becomes searchable (and where JSONB enters)
+---
+flowchart LR
+    classDef src fill:#e8f1fb,stroke:#3a6ea5,color:#0b2545
+    classDef py fill:#fff4d6,stroke:#b8860b,color:#3d2b00
+    classDef file fill:#f4f4f4,stroke:#888,color:#222
+    classDef model fill:#fde8ef,stroke:#b03060,color:#4a0d23
+    classDef pg fill:#e6f4ea,stroke:#2e7d32,color:#0d3b12
+    classDef out fill:#efe7fb,stroke:#6a3fb5,color:#24104a
+
+    subgraph S["1 Source"]
+        P2["🐘 aria_phase2<br/>Phase 2 simulation<br/>(seed 2026: products,<br/>customers, orders)"]:::src
+        GEN["🐍 generate_dataset.py<br/>sentence banks per topic<br/>stdlib, seed 202603"]:::py
+        RAW["📄 reviews_raw.csv<br/>2,440 rows"]:::file
+        GT["🔒 ground_truth.csv<br/>topic labels<br/>(never loaded)"]:::file
+        SEED["📄 02_product_seed.sql<br/>product_kind + specs JSON<br/>+ subclass rows"]:::file
+    end
+
+    subgraph C["2 Cleaning"]
+        CLEAN["🐍 clean_reviews.py<br/>decode HTML entities<br/>normalise whitespace<br/>drop 10 empty, 40 duplicates<br/>flag 14 short, 39 over 254 tokens"]:::py
+        CLEANCSV["📄 reviews_clean.csv<br/>2,390 rows<br/>+ data_quality_report.md"]:::file
+    end
+
+    subgraph E["3 Embedding (local CPU, no API)"]
+        MODEL["🤗 all-MiniLM-L6-v2<br/>rev 1110a24 · 384 dims<br/>sentence-transformers 6.3<br/>PyTorch CPU"]:::model
+        EMB["🐍 embed_reviews.py<br/>title + body · L2-normalised<br/>long texts: 254-token windows,<br/>mean-pooled"]:::py
+        VEC["📄 review_embeddings.csv<br/>query_embeddings.csv"]:::file
+    end
+
+    subgraph L["4 Load into PostgreSQL 18 + pgvector 0.8"]
+        COPY["psql \copy<br/>04_reviews.sql · 05_vectors.sql"]:::pg
+        PR[("product_reviews<br/>FKs · verified-purchase trigger<br/>details JSONB · body_tsv")]:::pg
+        RE[("review_embeddings<br/>vector(384)")]:::pg
+        PROD[("products.specs JSONB<br/>CHECK products_specs_valid<br/>+ 4 subclass tables")]:::pg
+        API["fn_add_product()<br/>new products later"]:::pg
+    end
+
+    subgraph I["5 Indexes"]
+        HNSW["HNSW<br/>vector_cosine_ops<br/>m=16, ef_construction=64"]:::pg
+        GIN["GIN jsonb_path_ops<br/>specs · details"]:::pg
+        FTS["GIN tsvector<br/>body_tsv"]:::pg
+    end
+
+    subgraph Q["6 Queries"]
+        Q1["C1 semantic top-5<br/>C2 vector + filters<br/>C3 hybrid FTS + vector (RRF)<br/>D1 vector + subclass + JSONB"]:::out
+        EV["🐍 evaluate.py<br/>precision@5 vs hidden labels<br/>→ evaluation.md"]:::out
+    end
+
+    P2 --> GEN
+    GEN --> RAW
+    GEN --> GT
+    GEN -- "JSONB specs" --> SEED
+    RAW --> CLEAN --> CLEANCSV
+    CLEANCSV --> EMB
+    MODEL --> EMB
+    EMB --> VEC
+    CLEANCSV -- "details JSONB" --> COPY
+    VEC --> COPY
+    COPY --> PR
+    COPY --> RE
+    SEED -- "psql" --> PROD
+    API -- "JSONB specs" --> PROD
+    RE --> HNSW
+    PR --> FTS
+    PR --> GIN
+    PROD --> GIN
+    HNSW --> Q1
+    FTS --> Q1
+    GIN --> Q1
+    Q1 --> EV
+    GT --> EV

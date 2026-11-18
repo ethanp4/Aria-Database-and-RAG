@@ -25,6 +25,9 @@ DROP FUNCTION IF EXISTS fn_add_product, fn_care_interval_months, fn_care_due_dat
 ALTER TABLE products DROP COLUMN IF EXISTS product_kind CASCADE,
                      DROP COLUMN IF EXISTS specs CASCADE;
 
+-- rolled-back demo inserts (A1) still advance identity sequences; reset so reruns print the same ids
+SELECT setval(pg_get_serial_sequence('products', 'product_id'), (SELECT max(product_id) FROM products));
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 SELECT current_database() AS database,
